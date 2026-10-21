@@ -658,3 +658,20 @@ model PolicyAcceptance {
   @@index([tenantId, userId])
   @@map("policy_acceptances")
 }
+
+/// Security-relevant events (failed logins, token reuse, forged tokens, webhook failures, scanning). No raw IPs, passwords or tokens are stored.
+model SecurityEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  type      String
+  severity  String   // LOW | MEDIUM | HIGH | CRITICAL
+  ipHash    String?  @map("ip_hash")
+  tenantId  String?  @map("tenant_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  detail    Json?
+  alerted   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([type, ipHash, createdAt])
+  @@index([createdAt])
+  @@map("security_events")
+}

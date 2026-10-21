@@ -2,11 +2,13 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logge
 import { Prisma } from '@techmunda/database';
 import { ProviderError, scrubSecrets } from '@techmunda/core';
 import type { Request, Response } from 'express';
+import { SecurityService } from '../security/security.service';
 
 /** Standard error envelope: { error: { code, message, details?, requestId } } — never leaks stack traces. */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger('Errors');
+  constructor(private readonly security: SecurityService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -50,6 +52,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error(scrubSecrets(exception instanceof Error ? `${exception.message}\n${exception.stack ?? ''}` : String(exception)));
     }
 
+    if ([401, 403, 404, 429].includes(status)) this.security.noteDenied(req.ip);
     res.status(status).json({ error: { code, message, details, requestId: (req as any).id ?? res.getHeader('x-request-id') } });
   }
 }

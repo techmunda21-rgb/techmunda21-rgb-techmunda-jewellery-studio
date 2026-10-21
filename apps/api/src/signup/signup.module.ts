@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { loadEnv } from '@techmunda/core';
 import { AuthModule } from '../auth/auth.module';
-import { OTP_DELIVERY, ProviderOtpDelivery } from './otp-delivery';
 import { SignupController } from './signup.controller';
 import { SignupService } from './signup.service';
 
-@Module({ imports: [AuthModule], controllers: [SignupController], providers: [SignupService, { provide: OTP_DELIVERY, useFactory: () => new ProviderOtpDelivery(loadEnv()) }] })
+/** OTP delivery (OTP_DELIVERY) is provided by the global SecurityModule alongside the SMTP mailer. */
+@Module({ imports: [AuthModule], controllers: [SignupController], providers: [SignupService] })
 export class SignupModule {}

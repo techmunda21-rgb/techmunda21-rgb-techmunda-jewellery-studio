@@ -33,10 +33,14 @@ services:
       - { key: GOOGLE_REDIRECT_URI, value: "https://techmunda-api.onrender.com/api/v1/integrations/google/callback" }
       - { key: DEMO_PASSWORD, sync: false }   # password for all demo logins — choose a private one before sharing the URL
       # Signup OTP delivery — set at least one pair, otherwise /signup says "unavailable" (it never fakes a code)
-      - { key: SMTP_HOST, sync: false }        # e.g. smtp.gmail.com
-      - { key: SMTP_USER, sync: false }        # e.g. techmunda21@gmail.com
-      - { key: SMTP_PASS, sync: false }        # a Google *App Password* (16 chars), NOT the account password
-      - { key: SMTP_FROM, sync: false }
+      # Pre-filled for the Gmail account techmunda21@gmail.com. ONLY the app password is a secret you must paste in Render
+      # (Google account → Security → 2-Step Verification ON → App passwords → create "Techmunda" → 16 characters).
+      - { key: SMTP_HOST, value: smtp.gmail.com }
+      - { key: SMTP_PORT, value: "465" }
+      - { key: SMTP_USER, value: techmunda21@gmail.com }
+      - { key: SMTP_PASS, sync: false }        # <- paste the 16-character Google App Password here (never the account password)
+      - { key: SMTP_FROM, value: "Techmunda <techmunda21@gmail.com>" }
+      - { key: ALERT_EMAIL, value: techmunda21@gmail.com }   # security alerts (brute force, token replay, scanners…) are e-mailed here
       - { key: TWILIO_ACCOUNT_SID, sync: false }
       - { key: TWILIO_AUTH_TOKEN, sync: false }
       - { key: TWILIO_MESSAGING_SERVICE_SID, sync: false }

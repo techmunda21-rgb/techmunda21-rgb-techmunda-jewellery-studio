@@ -9,6 +9,8 @@ import { prisma } from '@techmunda/database';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/setup';
 import { tenantWebhookSecret } from '../src/automation/automation.guard';
+import { IpBanService } from '../src/security/ip-ban.service';
+import { MailError, MailService } from '../src/security/mail.service';
 import { OTP_DELIVERY, type OtpChannel, type OtpDelivery } from '../src/signup/otp-delivery';
 import { GMAIL_GATEWAY, GmailError, type GmailConnection, type GmailGateway } from '../src/integrations/gmail.gateway';
 
@@ -61,10 +63,28 @@ export class FakeOtp implements OtpDelivery {
   reset() { this.available = ['EMAIL', 'SMS']; this.sent = []; this.failNext = false; }
 }
 
+/** Captures security alert / test e-mails in memory. */
+export class FakeMail {
+  configured = true;
+  failWith: MailError | null = null;
+  sent: Array<{ to: string; subject: string; text: string }> = [];
+  isConfigured() { return this.configured; }
+  missing() { return this.configured ? [] : ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS']; }
+  from() { return 'Techmunda <noreply@test>'; }
+  async send(m: { to: string; subject: string; text: string }) {
+    if (!this.configured) throw new MailError('E-mail is not configured', 'NOT_CONFIGURED');
+    if (this.failWith) throw this.failWith;
+    this.sent.push({ to: m.to, subject: m.subject, text: m.text });
+  }
+  async verify() { return this.failWith ? { ok: false, error: this.failWith.message } : { ok: true }; }
+  reset() { this.configured = true; this.failWith = null; this.sent = []; }
+}
+
 export async function createApp() {
+  const mail = new FakeMail();
   const gmail = new FakeGmail();
   const otp = new FakeOtp();
-  const mod = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(GMAIL_GATEWAY).useValue(gmail).overrideProvider(OTP_DELIVERY).useValue(otp).compile();
+  const mod = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(GMAIL_GATEWAY).useValue(gmail).overrideProvider(OTP_DELIVERY).useValue(otp).overrideProvider(MailService).useValue(mail).compile();
   const app = mod.createNestApplication({ bodyParser: false });
   configureApp(app);
   await app.init();
@@ -76,7 +96,8 @@ export async function createApp() {
     const wrap = (m: 'get' | 'post' | 'put' | 'patch' | 'delete') => (url: string) => (request(server) as any)[m](url).set('X-Forwarded-For', ipv());
     return { get: wrap('get'), post: wrap('post'), put: wrap('put'), patch: wrap('patch'), delete: wrap('delete') } as unknown as request.Agent;
   };
-  return { app, gmail, otp, http };
+  const bans = app.get(IpBanService);
+  return { app, gmail, otp, mail, bans, http };
 }
 
 export interface World {

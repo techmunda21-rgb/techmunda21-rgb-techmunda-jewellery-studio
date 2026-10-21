@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
 import { sha256 } from '@techmunda/core';
+import { SecurityService } from '../security/security.service';
 import { AuditService } from '../audit/audit.service';
 import { ENV, PRISMA, type AppEnv, type PrismaDb } from '../common/tokens';
 
@@ -11,7 +12,7 @@ const DUMMY_HASH = bcrypt.hashSync(randomBytes(16).toString('hex'), 12);
 
 @Injectable()
 export class AuthService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaDb, @Inject(ENV) private readonly env: AppEnv, private readonly jwt: JwtService, private readonly audit: AuditService) {}
+  constructor(@Inject(PRISMA) private readonly prisma: PrismaDb, @Inject(ENV) private readonly env: AppEnv, private readonly jwt: JwtService, private readonly audit: AuditService, private readonly security: SecurityService) {}
 
   private invalid(): never {
     throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' });
@@ -26,6 +27,7 @@ export class AuthService {
     const user = candidates.length === 1 ? candidates[0] : null;
     const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !ok) {
+      void this.security.report({ type: 'LOGIN_FAILED', severity: 'MEDIUM', ip, userId: user?.id, tenantId: user?.tenantId, detail: { account: email.replace(/^(.).*(@.*)$/, '$1•••$2') } });
       if (user) await this.audit.audit({ tenantId: user.tenantId, actorId: user.id, action: 'auth.login_failed', resourceType: 'user', resourceId: user.id, ipAddress: ip });
       this.invalid();
     }
@@ -54,6 +56,7 @@ export class AuthService {
     if (!row) this.invalid();
     if (row.revokedAt) {
       await this.prisma.refreshToken.updateMany({ where: { familyId: row.familyId, revokedAt: null }, data: { revokedAt: new Date() } });
+      void this.security.report({ type: 'REFRESH_TOKEN_REUSE', severity: 'CRITICAL', userId: row.userId, tenantId: row.user.tenantId, detail: { account: row.user.email.replace(/^(.).*(@.*)$/, '$1•••$2') } });
       await this.audit.audit({ tenantId: row.user.tenantId, actorId: row.userId, action: 'auth.refresh_reuse_detected', resourceType: 'user', resourceId: row.userId });
       throw new UnauthorizedException({ code: 'TOKEN_REUSED', message: 'Session revoked, please sign in again' });
     }

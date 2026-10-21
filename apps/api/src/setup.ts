@@ -3,12 +3,16 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
 import helmet from 'helmet';
 import { loadEnv } from '@techmunda/core';
+import { IpBanService } from './security/ip-ban.service';
 
 /** Shared by main.ts and the e2e tests so both exercise identical middleware. */
 export function configureApp(app: INestApplication, opts: { swagger?: boolean } = {}) {
   const env = loadEnv();
   const http = app.getHttpAdapter().getInstance();
   http.set('trust proxy', 1);
+  // temporarily blocked IPs (auto-banned after brute-force / scanning) get an opaque 403 before any route runs
+  const bans = app.get(IpBanService);
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => (bans.isBanned(req.ip) ? res.status(403).json({ error: { code: 'BLOCKED', message: 'Access temporarily blocked' } }) : next()));
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.enableCors({ origin: env.CORS_ORIGINS.split(',').map((s) => s.trim()), credentials: false, allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'], methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
   // raw bytes for signed uploads (10 MB cap), JSON with rawBody retained for webhook HMAC verification

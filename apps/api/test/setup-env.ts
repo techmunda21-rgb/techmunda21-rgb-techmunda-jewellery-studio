@@ -16,6 +16,7 @@ Object.assign(process.env, {
   QUEUE_MODE: 'inline',
   API_PUBLIC_URL: 'http://localhost:4000',
   LOG_LEVEL: 'silent',
+  ALERT_EMAIL: 'ops@alerts.test',
   GOOGLE_CLIENT_ID: '',
   GOOGLE_CLIENT_SECRET: '',
 });

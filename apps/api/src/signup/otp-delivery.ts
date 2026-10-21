@@ -1,6 +1,6 @@
 import { Logger, ServiceUnavailableException } from '@nestjs/common';
-import { createTransport } from 'nodemailer';
 import { scrubSecrets, type Env } from '@techmunda/core';
+import { MailService } from '../security/mail.service';
 
 export type OtpChannel = 'EMAIL' | 'SMS';
 export interface OtpDelivery {
@@ -24,8 +24,8 @@ function emailHtml(code: string) {
 
 /** Production delivery: SMTP e-mail (works with a Gmail app password) and Twilio SMS. Channels exist only when configured. */
 export class ProviderOtpDelivery implements OtpDelivery {
-  constructor(private readonly env: Env) {}
-  private smtp = () => !!(this.env.SMTP_HOST && this.env.SMTP_USER && this.env.SMTP_PASS);
+  constructor(private readonly env: Env, private readonly mail: MailService = new MailService(env)) {}
+  private smtp = () => this.mail.isConfigured();
   private twilio = () => !!(this.env.TWILIO_ACCOUNT_SID && this.env.TWILIO_AUTH_TOKEN && (this.env.TWILIO_FROM || this.env.TWILIO_MESSAGING_SERVICE_SID));
   /** The console mode is for local development only. It is refused on hosted platforms and in production. */
   consoleAllowed = () => this.env.ALLOW_INSECURE_OTP_CONSOLE && this.env.NODE_ENV !== 'production' && !process.env.RENDER && !process.env.RAILWAY_ENVIRONMENT && !process.env.VERCEL;
@@ -43,8 +43,7 @@ export class ProviderOtpDelivery implements OtpDelivery {
     }
     try {
       if (channel === 'EMAIL') {
-        const t = createTransport({ host: this.env.SMTP_HOST, port: this.env.SMTP_PORT, secure: this.env.SMTP_PORT === 465, auth: { user: this.env.SMTP_USER, pass: this.env.SMTP_PASS }, connectionTimeout: 10_000 });
-        await t.sendMail({ from: this.env.SMTP_FROM ?? this.env.SMTP_USER, to, subject: 'Your Techmunda verification code', text: `Your Techmunda demo verification code is ${code}. It expires in 10 minutes. Never share it.`, html: emailHtml(code) });
+        await this.mail.send({ to, subject: 'Your Techmunda verification code', text: `Your Techmunda demo verification code is ${code}. It expires in 10 minutes. Never share it.`, html: emailHtml(code) });
       } else {
         const sid = this.env.TWILIO_ACCOUNT_SID!;
         const body = new URLSearchParams({ To: to, Body: `Techmunda code: ${code}. Valid for 10 minutes. Do not share it.` });

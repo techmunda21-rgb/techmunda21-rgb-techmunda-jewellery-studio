@@ -71,6 +71,49 @@ function PrivacyPanel() {
   );
 }
 
+function PlatformPanel() {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [to, setTo] = useState('');
+  const ready = useQuery({ queryKey: ['ops-readiness'], queryFn: () => api<any>('/ops/readiness', { query: { verify: 'true' } }), retry: false });
+  const events = useQuery({ queryKey: ['ops-events'], queryFn: () => api<any>('/ops/security-events'), retry: false, refetchInterval: 60_000 });
+  const testMail = useMutation({ mutationFn: () => api<any>('/ops/test-email', { method: 'POST', body: to ? { to } : {} }), onSuccess: (r) => { toast.success(`Test e-mail sent to ${r.sentTo}. Check the inbox.`); void qc.invalidateQueries({ queryKey: ['ops-readiness'] }); }, onError: (e) => toast.error(errorMessage(e)) });
+  const testAlert = useMutation({ mutationFn: () => api<any>('/ops/test-alert', { method: 'POST' }), onSuccess: (r) => { toast.success(`Test security alert sent to ${r.sentTo}.`); void qc.invalidateQueries({ queryKey: ['ops-events'] }); }, onError: (e) => toast.error(errorMessage(e)) });
+  const r = ready.data;
+  const Row = ({ ok, label, detail }: { ok: boolean; label: string; detail?: string }) => (
+    <li className="flex items-start justify-between gap-3 px-5 py-3"><span>{label}{detail && <span className="block text-xs text-ink-muted">{detail}</span>}</span><Pill tone={ok ? 'green' : 'red'}>{ok ? 'Ready' : 'Not ready'}</Pill></li>
+  );
+  return (
+    <>
+      <Panel>
+        <PanelHeader title="Email & OTP readiness" description="Platform admin only — shows whether verification codes and security alerts can be delivered. Secret values are never displayed." />
+        {ready.isLoading ? <div className="p-5"><Skeleton className="h-28" /></div> : ready.isError ? <div className="p-5"><QueryError error={ready.error} /></div> : (<>
+          <ul className="divide-y divide-gold/20 text-sm">
+            <Row ok={r.smtp.configured && r.smtp.login?.ok !== false} label="E-mail (SMTP)" detail={r.smtp.configured ? `${r.smtp.host}:${r.smtp.port} as ${r.smtp.user}${r.smtp.login?.ok === false ? ` — ${r.smtp.login.error}` : r.smtp.login?.ok ? ' — login verified' : ''}` : `Missing: ${r.smtp.missing.join(', ')}`} />
+            <Row ok={r.sms.configured} label="Mobile SMS (Twilio)" detail={r.sms.configured ? 'Configured' : `Missing: ${r.sms.missing.join(', ')}`} />
+            <Row ok={r.signup.enabled} label="Signup with OTP" detail={r.signup.enabled ? `Verification channels: ${r.signup.channels.join(' + ')}` : 'Signup page shows “unavailable” until a channel is ready'} />
+            <Row ok={r.alerts.canEmail} label="Security alert e-mails" detail={r.alerts.alertEmail ? `Alerts go to ${r.alerts.alertEmail}` : 'ALERT_EMAIL is not set'} />
+          </ul>
+          {r.warnings.length > 0 && <div className="space-y-2 px-5 pb-1 pt-4">{r.warnings.map((w: string) => <Banner key={w} tone="warn">{w}</Banner>)}</div>}
+          <div className="flex flex-wrap items-end gap-3 border-t border-gold/25 p-5">
+            <div className="min-w-[220px] flex-1"><label htmlFor="test-to" className="mb-1 block text-xs font-semibold text-ink-muted">Send a test e-mail to (default: alert address)</label><Input id="test-to" type="email" placeholder="you@example.com" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+            <Button variant="gold" size="sm" loading={testMail.isPending} onClick={() => testMail.mutate()}>Send test e-mail</Button>
+            <Button variant="outline" size="sm" loading={testAlert.isPending} onClick={() => testAlert.mutate()}>Send test security alert</Button>
+          </div>
+        </>)}
+      </Panel>
+      <Panel>
+        <PanelHeader title="Security events" description={`Failed logins, token replays, forged tokens, webhook failures, scanners. Currently blocked IPs: ${events.data?.blockedIps ?? 0}`} action={<ShieldCheck className="h-5 w-5 text-gold-deep" aria-hidden />} />
+        {events.isLoading ? <div className="p-5"><Skeleton className="h-24" /></div> : !events.data?.data.length ? <p className="p-5 text-sm text-ink-muted">No security events recorded.</p> : (
+          <ul className="max-h-80 divide-y divide-gold/20 overflow-y-auto text-sm scroll-thin">{events.data.data.slice(0, 40).map((e: any) => (
+            <li key={e.id} className="flex items-center justify-between gap-3 px-5 py-2.5"><span><Pill tone={e.severity === 'CRITICAL' || e.severity === 'HIGH' ? 'red' : e.severity === 'MEDIUM' ? 'gold' : 'muted'}>{e.severity}</Pill><code className="ml-2 text-xs">{e.type}</code>{e.alerted && <span className="ml-2 text-[11px] text-status-approved">e-mailed</span>}</span><span className="text-xs text-ink-muted">{dateTime(e.createdAt)}</span></li>
+          ))}</ul>
+        )}
+      </Panel>
+    </>
+  );
+}
+
 function Settings() {
   const { me, can } = useAuth();
   const sp = useSearchParams();
@@ -130,6 +173,8 @@ function Settings() {
             <div className="flex justify-between"><dt className="text-ink-muted">Public enquiry page</dt><dd><a className="font-medium text-royal hover:underline" href={`/enquiry/${me?.tenant.slug}`} target="_blank" rel="noopener">/enquiry/{me?.tenant.slug}</a></dd></div></dl>
         </Panel>
       </div>
+
+      {can('PLATFORM_ADMIN') && <PlatformPanel />}
 
       <PrivacyPanel />
 

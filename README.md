@@ -80,6 +80,9 @@ Royal red `#780514` (actions) · antique gold `#B88A36` (icons/borders) · warm 
 ## Self-service signup (OTP-verified demo workspaces)
 `/signup` lets a prospect create their own demo workspace after accepting the **Terms of Demo Use** and **Privacy Policy** (`/legal/terms`, `/legal/privacy`) and verifying a one-time code sent to their **e-mail** (SMTP, e.g. a Gmail app password) or **mobile** (Twilio SMS). Their data is stored in Postgres, isolated per workspace, auto-deleted after 30 days, and they can export or delete it themselves in *Settings → Privacy & data*. **Delivery needs credentials you provide** (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#signup-otp-delivery-e-mail-andor-mobile)); without them signup reports itself unavailable instead of faking codes. Locally, `ALLOW_INSECURE_OTP_CONSOLE=true` prints codes in the API log (refused in production).
 
+## Server & code protection
+Secrets never reach the browser; DevTools can only ever show minified front-end files (no source maps, strict CSP). The server detects brute force, token replay, forged tokens, webhook probing and scanners, e-mails `ALERT_EMAIL`, and auto-blocks abusive IPs. Read [docs/SECURITY-STRATEGY.md](docs/SECURITY-STRATEGY.md) — including the owner checklist (make the GitHub repo private, set `DEMO_PASSWORD`, enable 2FA, add `SMTP_PASS`).
+
 ## Dashboard showcase (design PDF)
 The Overview page has a **Showcase** panel: *Import design PDF* (owner/manager/designer) embeds a lookbook or price-catalogue PDF for client presentations (25 MB, 200 pages; scripts/launch actions/embedded files are rejected; the newest upload is shown, older ones can be re-activated or deleted). It displays the PDF — it does not extract products from it; use the CSV for that.
 

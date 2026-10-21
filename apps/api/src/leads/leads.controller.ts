@@ -8,6 +8,7 @@ import {
 import { z } from 'zod';
 import { ClientIp, CurrentUser, Doc, Public, Roles } from '../common/decorators';
 import { ENV, PRISMA, type AppEnv, type PrismaDb } from '../common/tokens';
+import { SecurityService } from '../security/security.service';
 import type { AuthUser } from '../common/types';
 import { zod } from '../common/zod.pipe';
 import { LeadsService } from './leads.service';
@@ -19,7 +20,7 @@ const SALES = ['PLATFORM_ADMIN', 'TENANT_OWNER', 'MANAGER', 'SALES_EXECUTIVE'] a
 @Controller('public')
 export class PublicLeadsController {
   private readonly logger = new Logger('PublicLeads');
-  constructor(private readonly leads: LeadsService, @Inject(PRISMA) private readonly prisma: PrismaDb, @Inject(ENV) private readonly env: AppEnv) {}
+  constructor(private readonly leads: LeadsService, @Inject(PRISMA) private readonly prisma: PrismaDb, @Inject(ENV) private readonly env: AppEnv, private readonly security: SecurityService) {}
 
   /** Public enquiry endpoint: rate-limited, honeypot + timing trap, optional Turnstile, no data echoed back. */
   @Public()
@@ -29,7 +30,10 @@ export class PublicLeadsController {
   @Doc('Submit a customer enquiry (public)', publicLeadSchema)
   async submit(@Body(zod(publicLeadSchema)) body: PublicLeadInput, @ClientIp() ip: string) {
     // Bots fill hidden fields or submit instantly: pretend success, store nothing.
-    if (body.website || (body.formStartedAt && Date.now() - body.formStartedAt < 1500)) return { ok: true };
+    if (body.website || (body.formStartedAt && Date.now() - body.formStartedAt < 1500)) {
+      void this.security.report({ type: 'BOT_HONEYPOT', severity: 'LOW', ip });
+      return { ok: true };
+    }
     if (this.env.TURNSTILE_SECRET) {
       const ok = await this.verifyTurnstile(body.turnstileToken, ip);
       if (!ok) throw new NotFoundException({ code: 'BOT_CHECK_FAILED', message: 'Bot check failed. Please retry.' });

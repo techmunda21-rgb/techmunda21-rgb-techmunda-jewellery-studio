@@ -6,6 +6,7 @@ import type { z } from 'zod';
 import { AuditService } from '../audit/audit.service';
 import { AuthService } from '../auth/auth.service';
 import { ENV, PRISMA, type AppEnv, type PrismaDb } from '../common/tokens';
+import { SecurityService } from '../security/security.service';
 import { OTP_DELIVERY, type OtpChannel, type OtpDelivery } from './otp-delivery';
 
 const OTP_TTL_MS = 10 * 60_000;
@@ -23,6 +24,7 @@ export class SignupService {
     @Inject(OTP_DELIVERY) private readonly delivery: OtpDelivery,
     private readonly auth: AuthService,
     private readonly audit: AuditService,
+    private readonly security: SecurityService,
   ) {}
 
   config() {
@@ -55,6 +57,9 @@ export class SignupService {
     const cfg = this.config();
     if (!cfg.enabled) throw new ServiceUnavailableException({ code: 'SIGNUP_UNAVAILABLE', message: cfg.blockedReason });
     if (!cfg.channels.includes(input.channel)) throw new BadRequestException({ code: 'CHANNEL_UNAVAILABLE', message: `Verification by ${input.channel === 'SMS' ? 'mobile' : 'e-mail'} is not available. Choose ${cfg.channels[0] === 'SMS' ? 'mobile' : 'e-mail'}.` });
+    if (input.website) {
+      void this.security.report({ type: 'BOT_HONEYPOT', severity: 'LOW', ip });
+    }
     if (input.website) return { requestId: randomUUID(), channel: input.channel, sentTo: mask(input.channel, input.channel === 'EMAIL' ? input.email : input.phone), expiresInSeconds: 600, resendAfterSeconds: 60 }; // honeypot: pretend
 
     const ipHash = this.hashIp(ip);
@@ -63,7 +68,10 @@ export class SignupService {
       this.prisma.signupRequest.count({ where: { ipHash, createdAt: { gte: hourAgo } } }),
       this.prisma.signupRequest.count({ where: { email: input.email, createdAt: { gte: hourAgo } } }),
     ]);
-    if (byIp >= 5 || byEmail >= 3) throw new HttpException({ code: 'RATE_LIMITED', message: 'Too many signup attempts. Please try again in an hour.' }, 429);
+    if (byIp >= 5 || byEmail >= 3) {
+      void this.security.report({ type: 'SIGNUP_ABUSE', severity: 'MEDIUM', ip });
+      throw new HttpException({ code: 'RATE_LIMITED', message: 'Too many signup attempts. Please try again in an hour.' }, 429);
+    }
 
     const taken = await this.prisma.user.findFirst({ where: { OR: [{ email: input.email }, { phone: input.phone }] }, select: { id: true } });
     if (taken) throw new ConflictException({ code: 'ACCOUNT_EXISTS', message: 'An account with this e-mail or mobile number already exists. Please sign in instead.' });
@@ -102,13 +110,17 @@ export class SignupService {
     if (!r || r.status === 'VERIFIED' || r.status === 'EXPIRED') throw new BadRequestException({ code: 'REQUEST_INVALID', message: 'This signup session is no longer valid. Please start again.' });
     if (r.status === 'LOCKED' || r.attempts >= MAX_ATTEMPTS) {
       await this.prisma.signupRequest.update({ where: { id: r.id }, data: { status: 'LOCKED' } });
+      void this.security.report({ type: 'OTP_LOCKOUT', severity: 'MEDIUM', ip });
       throw new HttpException({ code: 'TOO_MANY_ATTEMPTS', message: 'Too many incorrect codes. Please start the signup again.' }, 429);
     }
     if (r.otpExpiresAt < new Date()) throw new BadRequestException({ code: 'CODE_EXPIRED', message: 'The code has expired. Request a new one.' });
 
     if (!this.same(this.hashOtp(r.id, code), r.otpHash)) {
       const updated = await this.prisma.signupRequest.update({ where: { id: r.id }, data: { attempts: { increment: 1 } } });
-      if (updated.attempts >= MAX_ATTEMPTS) await this.prisma.signupRequest.update({ where: { id: r.id }, data: { status: 'LOCKED' } });
+      if (updated.attempts >= MAX_ATTEMPTS) {
+        await this.prisma.signupRequest.update({ where: { id: r.id }, data: { status: 'LOCKED' } });
+        void this.security.report({ type: 'OTP_LOCKOUT', severity: 'MEDIUM', ip });
+      }
       throw invalid();
     }
 

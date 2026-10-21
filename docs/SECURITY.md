@@ -20,6 +20,8 @@
 | Audit | `audit_logs` for login, approvals, sends, exports, uploads, integration changes; `activity_logs` for the CRM timeline |
 | Messaging rules | Consent `GRANTED` required to draft *and re-checked at send*; withdrawal cancels open drafts and blocks sends; opt-out line is appended to AI drafts; imported contacts have no consent; 200/day/tenant send cap; recipient must still equal the contact's email |
 
+See [SECURITY-STRATEGY.md](SECURITY-STRATEGY.md) for the DevTools/code-exposure explanation, alerting and your owner checklist.
+
 ## Self-service signup & privacy controls
 | Control | Implementation |
 |---|---|

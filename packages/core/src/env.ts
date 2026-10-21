@@ -50,6 +50,8 @@ const schema = z.object({
   /** Self-service signup. Needs at least one OTP delivery channel below, otherwise signup reports itself unavailable. */
   SIGNUP_ENABLED: z.string().optional().transform((v) => v !== 'false'),
   DEMO_RETENTION_DAYS: z.coerce.number().default(30),
+  /** Where security alerts (brute force, token reuse, forged tokens…) are e-mailed. Needs SMTP configured. */
+  ALERT_EMAIL: z.string().email().optional().or(z.literal('').transform(() => undefined)),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(465),
   SMTP_USER: z.string().optional(),

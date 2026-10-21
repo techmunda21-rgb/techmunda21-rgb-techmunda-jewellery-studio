@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '../styles/globals.css';
 import { Providers } from '@/lib/providers';
+import { ConsoleWarning } from '@/components/console-warning';
 
 export const metadata: Metadata = {
   title: { default: 'Techmunda — AI Jewellery Growth Studio', template: '%s · Techmunda' },
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-royal focus:px-4 focus:py-2 focus:text-ivory">Skip to content</a>
+        <ConsoleWarning />
         <Providers>{children}</Providers>
       </body>
     </html>
