@@ -91,7 +91,7 @@ function LeadsList() {
             <tbody className="divide-y divide-gold/20">{list.data.data.map((l: any) => (
               <tr key={l.id} className="hover:bg-gold/10">
                 <td className="px-4 py-3"><Link href={`/leads/${l.id}`} className="flex items-center gap-3 font-semibold hover:text-royal"><Avatar name={l.contact.name} className="h-9 w-9" /><span>{l.contact.name}<span className="block text-xs font-normal text-ink-muted">{l.contact.email ?? l.contact.phone}</span></span></Link></td>
-                <td className="px-4 py-3">{l.productInterest ?? '—'}</td>
+                <td className="px-4 py-3"><span className="flex items-center gap-2.5">{l.productImageUrl && <img src={l.productImageUrl} alt="" className="h-9 w-12 rounded-md border border-gold/40 object-cover" />}{l.productInterest ?? '—'}</span></td>
                 <td className="px-4 py-3 whitespace-nowrap">{budgetRange(l.budgetMin, l.budgetMax, cur)}</td>
                 <td className="px-4 py-3"><ScoreChip score={l.leadScore} /></td>
                 <td className="px-4 py-3"><Pill tone={stageTone(l.status)}>{LEAD_STAGE_LABELS[l.status as keyof typeof LEAD_STAGE_LABELS]}</Pill></td>

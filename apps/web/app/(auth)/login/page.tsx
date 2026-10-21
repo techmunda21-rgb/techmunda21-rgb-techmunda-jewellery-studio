@@ -8,7 +8,7 @@ import { Eye, EyeOff, Gem, ImageIcon, Mail, Users, Workflow } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Checkbox, Field, Input } from '@/components/ui/form';
 import { Banner } from '@/components/ui/misc';
-import { GoldDivider, HeroJewel, Logo, LogoMark, Motif } from '@/components/brand/brand';
+import { GoldDivider, Logo, LogoMark, Motif } from '@/components/brand/brand';
 import { useAuth } from '@/lib/auth';
 import { errorMessage } from '@/lib/api';
 
@@ -39,7 +39,7 @@ export default function LoginPage() {
         <Motif className="pointer-events-none absolute -bottom-32 -left-20 h-[360px] w-[360px] opacity-15" />
         <Logo />
         <div className="relative max-w-lg">
-          <HeroJewel className="mx-auto mb-4 w-[78%] drop-shadow-[0_18px_30px_rgba(0,0,0,0.45)]" />
+          <img src="/images/hero-royal.jpg" alt="Emerald and gold heritage necklace with jhumka earrings on crimson velvet" className="mb-8 aspect-[16/9] w-full rounded-2xl border border-gold/60 object-cover shadow-lift" />
           <p className="eyebrow !text-gold">AI Jewellery Growth Studio</p>
           <h1 className="mt-3 font-editorial text-5xl font-semibold leading-[1.05] text-ivory">Transform Your Jewellery Business with AI</h1>
           <GoldDivider className="my-6 max-w-xs" />

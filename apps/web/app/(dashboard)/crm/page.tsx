@@ -80,7 +80,7 @@ export default function CrmPage() {
                     <section key={s.stage} aria-label={`${LEAD_STAGE_LABELS[s.stage as keyof typeof LEAD_STAGE_LABELS]} column`}
                       onDragOver={(e) => { if (dragging && sales) { e.preventDefault(); setOver(s.stage); } }} onDragLeave={() => setOver((o) => (o === s.stage ? null : o))}
                       onDrop={(e) => { e.preventDefault(); setOver(null); if (dragging && sales) { const lead = stages.flatMap((x) => x.leads).find((l: any) => l.id === dragging); if (lead && lead.status !== s.stage) move.mutate({ id: dragging, status: s.stage }); } setDragging(null); }}
-                      className={cn('flex max-h-[calc(100vh-260px)] min-h-[320px] w-72 shrink-0 flex-col overflow-hidden rounded-2xl border bg-ivory shadow-card transition', over === s.stage ? 'border-royal ring-2 ring-royal/30' : 'border-gold/45')}>
+                      className={cn('flex max-h-[calc(100vh-260px)] min-h-[320px] w-72 shrink-0 flex-col overflow-hidden rounded-2xl border bg-cream/70 shadow-card transition', over === s.stage ? 'border-royal ring-2 ring-royal/30' : 'border-gold/45')}>
                       <header className={cn('flex items-center justify-between px-4 py-3', HEAD[s.stage])}>
                         <h2 className="font-display text-[15px] font-semibold !text-inherit">{LEAD_STAGE_LABELS[s.stage as keyof typeof LEAD_STAGE_LABELS]} <span className="ml-1 font-sans text-sm font-medium opacity-90">({s.count})</span></h2>
                         <span className="text-xs font-semibold opacity-90">{moneyCompact(s.totalValue, cur)}</span>
@@ -88,20 +88,25 @@ export default function CrmPage() {
                       <ul className="flex-1 space-y-2.5 overflow-y-auto p-2.5 scroll-thin">
                         {leads.map((l: any) => (
                           <li key={l.id} draggable={sales} onDragStart={() => setDragging(l.id)} onDragEnd={() => { setDragging(null); setOver(null); }}
-                            className={cn('rounded-xl border bg-cream/60 p-3 transition hover:border-gold hover:shadow-card', selected?.id === l.id ? 'border-royal' : 'border-gold/40', dragging === l.id && 'opacity-50')}>
-                            <div className="flex items-start gap-2.5">
-                              <Avatar name={l.contact.name} className="h-9 w-9" />
-                              <button className="min-w-0 flex-1 text-left" onClick={() => { setSelected(l); setIdeas(null); }} aria-label={`Open assistant for ${l.contact.name}`}>
-                                <p className="truncate text-sm font-semibold">{l.contact.name}</p>
-                                <p className="truncate text-xs text-ink-muted">{l.productInterest ?? 'General enquiry'}</p>
-                              </button>
-                              {sales && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gold-deep" aria-hidden />}
+                            className={cn('group overflow-hidden rounded-xl border bg-ivory transition hover:-translate-y-0.5 hover:border-gold hover:shadow-lift', selected?.id === l.id ? 'border-royal ring-1 ring-royal/40' : 'border-gold/40', dragging === l.id && 'opacity-50')}>
+                            <button className="relative block aspect-[16/9] w-full overflow-hidden bg-maroon" onClick={() => { setSelected(l); setIdeas(null); }} aria-label={`Open assistant for ${l.contact.name}`}>
+                              {l.productImageUrl ? <img src={l.productImageUrl} alt={l.productImageName ?? l.productInterest ?? 'Product of interest'} loading="lazy" draggable={false} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="motif-bg flex h-full items-center justify-center text-gold/70"><Sparkles className="h-6 w-6" aria-hidden /></div>}
+                              <span className="absolute inset-0 bg-gradient-to-t from-maroon-deep/75 via-transparent to-transparent" aria-hidden />
+                              <span className="absolute bottom-1.5 left-2.5 right-2 flex items-end justify-between gap-2 text-left text-ivory"><span className="truncate font-display text-[13px] font-semibold drop-shadow">{l.productImageName ?? l.productInterest ?? 'General enquiry'}</span></span>
+                              <span className="absolute right-2 top-2 rounded-full bg-ivory shadow-card"><ScoreChip score={l.leadScore} /></span>
+                            </button>
+                            <div className="p-3">
+                              <div className="flex items-center gap-2.5">
+                                <Avatar name={l.contact.name} className="h-8 w-8" />
+                                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold leading-tight">{l.contact.name}</p><p className="truncate text-[11px] text-ink-muted">{l.productInterest ?? 'General enquiry'} · {timeAgo(l.createdAt)}</p></div>
+                                {sales && <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-gold-deep" aria-hidden />}
+                              </div>
+                              <div className="mt-2.5 flex items-center justify-between">
+                                <span className="font-display text-base font-semibold text-royal">{l.estimatedValue ? moneyCompact(l.estimatedValue, cur) : budgetRange(l.budgetMin, l.budgetMax, cur)}</span>
+                                {l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() && !['WON', 'LOST'].includes(l.status) && <Pill tone="red">Follow-up due</Pill>}
+                              </div>
+                              {sales && <Select aria-label={`Move ${l.contact.name} to stage`} className="mt-2.5 !py-1 text-xs" value={l.status} onChange={(e) => move.mutate({ id: l.id, status: e.target.value })}>{LEAD_STAGES.map((st) => <option key={st} value={st}>{LEAD_STAGE_LABELS[st]}</option>)}</Select>}
                             </div>
-                            <div className="mt-2.5 flex items-center justify-between gap-2">
-                              <span className="font-display text-sm font-semibold text-royal">{l.estimatedValue ? moneyCompact(l.estimatedValue, cur) : budgetRange(l.budgetMin, l.budgetMax, cur)}</span>
-                              <ScoreChip score={l.leadScore} />
-                            </div>
-                            {sales && <Select aria-label={`Move ${l.contact.name} to stage`} className="mt-2.5 !py-1 text-xs" value={l.status} onChange={(e) => move.mutate({ id: l.id, status: e.target.value })}>{LEAD_STAGES.map((st) => <option key={st} value={st}>{LEAD_STAGE_LABELS[st]}</option>)}</Select>}
                           </li>
                         ))}
                         {!leads.length && <li className="rounded-xl border border-dashed border-gold/40 py-8 text-center text-xs text-ink-muted">No leads here</li>}
@@ -117,6 +122,7 @@ export default function CrmPage() {
             <aside className="hidden w-80 shrink-0 xl:block" aria-label="AI assistant">
               <div className="panel sticky top-24 space-y-4 p-5">
                 <div className="flex items-start justify-between"><div className="flex items-center gap-2 font-display text-base font-semibold"><Bot className="h-5 w-5 text-gold-deep" />AI Assistant</div><button aria-label="Close assistant" onClick={() => setSelected(null)} className="rounded p-1 hover:bg-gold/15"><X className="h-4 w-4" /></button></div>
+                {selected.productImageUrl && <img src={selected.productImageUrl} alt={selected.productImageName ?? 'Product of interest'} className="aspect-[16/10] w-full rounded-xl border border-gold/50 object-cover" />}
                 <div className="flex items-center gap-3"><Avatar name={selected.contact.name} className="h-11 w-11" /><div><p className="font-semibold">{selected.contact.name}</p><p className="text-xs text-ink-muted">{selected.productInterest ?? 'General enquiry'} · {timeAgo(selected.createdAt)}</p></div></div>
                 <div className="flex flex-wrap gap-1.5"><ScoreChip score={selected.leadScore} /><Pill tone="gold">{LEAD_STAGE_LABELS[selected.status as keyof typeof LEAD_STAGE_LABELS]}</Pill>{selected.contact.consentStatus !== 'GRANTED' && <Pill tone="red">No consent</Pill>}</div>
                 {selected.qualificationReason && <div><p className="eyebrow !text-[10px]">Why this score</p><p className="mt-1 text-sm">{selected.qualificationReason}</p></div>}

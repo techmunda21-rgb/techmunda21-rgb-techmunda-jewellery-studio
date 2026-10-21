@@ -4,6 +4,7 @@ import { generateFollowUpDraft, parseBudget, suggestReplies, type DraftContext }
 import { AuditService } from '../audit/audit.service';
 import { found, num, pageArgs, paged } from '../common/helpers';
 import { QueueService } from '../common/queue.service';
+import { MediaUrlService } from '../media/media-url.service';
 import { ENV, PRISMA, type AppEnv, type PrismaDb } from '../common/tokens';
 import type { AuthUser } from '../common/types';
 
@@ -13,7 +14,7 @@ const digits = (s?: string | null) => (s ?? '').replace(/\D/g, '');
 @Injectable()
 export class LeadsService {
   private readonly logger = new Logger('Leads');
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaDb, @Inject(ENV) private readonly env: AppEnv, private readonly queues: QueueService, private readonly audit: AuditService) {}
+  constructor(@Inject(PRISMA) private readonly prisma: PrismaDb, @Inject(ENV) private readonly env: AppEnv, private readonly queues: QueueService, private readonly audit: AuditService, private readonly urls: MediaUrlService) {}
 
   /* ───────────── capture (public form + automation) ───────────── */
 
@@ -81,6 +82,30 @@ export class LeadsService {
 
   /* ───────────── reads ───────────── */
 
+  /** Maps a free-text interest to a catalogue category so CRM cards can show the matching real product photo. */
+  static categoryFor(interest?: string | null): string | null {
+    const t = (interest ?? '').toLowerCase();
+    const rules: Array<[RegExp, string]> = [[/pendant|mangalsutra/, 'Pendant'], [/bridal|wedding/, 'Bridal Set'], [/earring|jhumk|stud/, 'Earrings'], [/bangle|kada|bracelet/, 'Bangles'], [/ring|solitaire|engagement/, 'Ring'], [/necklace|haar|choker|chain|polki|temple/, 'Necklace']];
+    return rules.find(([re]) => re.test(t))?.[1] ?? null;
+  }
+
+  /** One query per request: category → signed thumbnail URL of the tenant's first product in that category. */
+  private async imageMap(tenantId: string): Promise<Map<string, { url: string; name: string }>> {
+    const products = await this.prisma.product.findMany({ where: { tenantId }, orderBy: { createdAt: 'asc' }, include: { media: { where: { isOriginal: true }, orderBy: { createdAt: 'asc' }, take: 1 } } });
+    const map = new Map<string, { url: string; name: string }>();
+    for (const p of products) {
+      const m = p.media[0];
+      if (m && !map.has(p.category)) map.set(p.category, { url: await this.urls.viewUrl(tenantId, m.storageKey, m.mimeType, { ttl: 3600 }), name: p.name });
+    }
+    return map;
+  }
+
+  private withImage<T extends { productInterest: string | null }>(row: T, map: Map<string, { url: string; name: string }>) {
+    const cat = LeadsService.categoryFor(row.productInterest);
+    const hit = cat ? map.get(cat) : undefined;
+    return { ...row, productImageUrl: hit?.url ?? null, productImageName: hit?.name ?? null };
+  }
+
   private leadRow(l: any) {
     return {
       id: l.id, source: l.source, status: l.status, productInterest: l.productInterest, preferredMaterial: l.preferredMaterial,
@@ -104,16 +129,18 @@ export class LeadsService {
       this.prisma.lead.findMany({ where, orderBy: [{ createdAt: 'desc' }], ...pageArgs(q.page, q.pageSize), include: { contact: true, opportunities: { take: 1, orderBy: { createdAt: 'asc' } } } }),
       this.prisma.lead.count({ where }),
     ]);
-    return paged(rows.map((r) => this.leadRow(r)), total, q.page, q.pageSize);
+    const imgs = await this.imageMap(user.tenantId);
+    return paged(rows.map((r) => this.withImage(this.leadRow(r), imgs)), total, q.page, q.pageSize);
   }
 
   async board(user: AuthUser, search?: string) {
     const where: any = { tenantId: user.tenantId };
     if (search) where.OR = [{ productInterest: { contains: search, mode: 'insensitive' } }, { contact: { name: { contains: search, mode: 'insensitive' } } }];
     const rows = await this.prisma.lead.findMany({ where, orderBy: [{ leadScore: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }], include: { contact: true, opportunities: { take: 1, orderBy: { createdAt: 'asc' } } }, take: 400 });
+    const imgs = await this.imageMap(user.tenantId);
     const stages = LEAD_STAGES.map((stage) => {
       const items = rows.filter((r) => r.status === stage);
-      return { stage, count: items.length, totalValue: items.reduce((s, i) => s + (num(i.opportunities[0]?.estimatedValue) ?? 0), 0), leads: items.slice(0, 50).map((r) => this.leadRow(r)) };
+      return { stage, count: items.length, totalValue: items.reduce((s, i) => s + (num(i.opportunities[0]?.estimatedValue) ?? 0), 0), leads: items.slice(0, 50).map((r) => this.withImage(this.leadRow(r), imgs)) };
     });
     return { stages };
   }
@@ -127,7 +154,7 @@ export class LeadsService {
       'Lead',
     );
     const activities = await this.prisma.activityLog.findMany({ where: { tenantId: user.tenantId, leadId: id }, orderBy: { createdAt: 'desc' }, take: 100 });
-    return { ...this.leadRow(l), opportunities: l.opportunities.map((o) => ({ id: o.id, name: o.name, estimatedValue: num(o.estimatedValue), currency: o.currency, stage: o.stage, expectedCloseDate: o.expectedCloseDate })), notes: l.notes, tasks: l.tasks, drafts: l.drafts, activities };
+    return { ...this.withImage(this.leadRow(l), await this.imageMap(user.tenantId)), opportunities: l.opportunities.map((o) => ({ id: o.id, name: o.name, estimatedValue: num(o.estimatedValue), currency: o.currency, stage: o.stage, expectedCloseDate: o.expectedCloseDate })), notes: l.notes, tasks: l.tasks, drafts: l.drafts, activities };
   }
 
   /* ───────────── writes ───────────── */

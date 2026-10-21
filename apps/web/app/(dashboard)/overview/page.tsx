@@ -134,7 +134,7 @@ export default function OverviewPage() {
               {recent.data?.data.map((l: any) => (
                 <li key={l.id}>
                   <Link href={`/leads/${l.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gold/10">
-                    <Avatar name={l.contact.name} className="h-9 w-9" />
+                    {l.productImageUrl ? <img src={l.productImageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg border border-gold/50 object-cover" /> : <Avatar name={l.contact.name} className="h-10 w-10" />}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{l.contact.name}</p>
                       <p className="truncate text-xs text-ink-muted">{l.productInterest ?? 'General enquiry'} · {budgetRange(l.budgetMin, l.budgetMax, cur)}</p>

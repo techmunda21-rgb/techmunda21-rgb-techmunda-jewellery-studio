@@ -15,6 +15,8 @@ import { api, errorMessage } from '@/lib/api';
 import { CAN_APPROVE_EMAIL, CAN_SEND_EMAIL, useAuth } from '@/lib/auth';
 import { budgetRange, dateTime } from '@/lib/format';
 import { useIntegrationStatus } from '@/hooks/queries';
+import { renderEmailHtml } from '@techmunda/shared';
+import { cn } from '@/lib/utils';
 
 /** Gmail draft approval (screen 9). Approve and Send are two separate, deliberate actions. */
 export function DraftReview({ id }: { id: string }) {
@@ -25,6 +27,7 @@ export function DraftReview({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [view, setView] = useState<'text' | 'preview'>('preview');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [ideas, setIdeas] = useState<{ suggestions: string[]; source: string } | null>(null);
@@ -91,7 +94,18 @@ export function DraftReview({ id }: { id: string }) {
 
           <div><label className="mb-1 block text-[13px] font-medium" htmlFor="d-to">To</label><Input id="d-to" readOnly value={d.recipient} className="bg-cream/60" /></div>
           <div><label className="mb-1 block text-[13px] font-medium" htmlFor="d-sub">Subject</label><Input id="d-sub" readOnly={!editing} value={editing ? subject : d.subject} onChange={(e) => setSubject(e.target.value)} className={editing ? '' : 'bg-cream/60'} /></div>
-          <div><label className="mb-1 block text-[13px] font-medium" htmlFor="d-body">Body</label><Textarea id="d-body" readOnly={!editing} value={editing ? body : d.body} onChange={(e) => setBody(e.target.value)} className={`min-h-[300px] leading-relaxed ${editing ? '' : 'bg-cream/60'}`} /></div>
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="text-[13px] font-medium" htmlFor="d-body">Body</label>
+              {!editing && <div role="tablist" aria-label="Body view" className="flex rounded-lg border border-gold/60 bg-ivory p-0.5 text-xs font-semibold">{(['preview', 'text'] as const).map((v) => <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn('rounded-md px-3 py-1 transition', view === v ? 'bg-royal text-ivory' : 'hover:bg-gold/10')}>{v === 'preview' ? 'Email preview' : 'Plain text'}</button>)}</div>}
+            </div>
+            {!editing && view === 'preview' ? (
+              <iframe title="Email preview exactly as the recipient will see it" sandbox="" srcDoc={renderEmailHtml({ subject: d.subject, body: d.body, businessName: me?.tenant.name ?? '' })} className="h-[560px] w-full rounded-xl border border-gold/50 bg-cream" />
+            ) : (
+              <Textarea id="d-body" readOnly={!editing} value={editing ? body : d.body} onChange={(e) => setBody(e.target.value)} className={`min-h-[300px] leading-relaxed ${editing ? '' : 'bg-cream/60'}`} />
+            )}
+            {!editing && view === 'preview' && <p className="mt-1 text-xs text-ink-muted">Recipients receive this branded HTML plus the plain-text version you approve. Only the plain text is editable; the layout adds no extra content or links.</p>}
+          </div>
           {editing && d.status === 'APPROVED' && <Banner tone="warn">Saving creates version {d.version + 1} and withdraws the current approval.</Banner>}
 
           <div className="flex flex-wrap items-center gap-2 border-t border-gold/25 pt-4">

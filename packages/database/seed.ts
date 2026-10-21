@@ -1,12 +1,13 @@
 /**
  * Repeatable demo seed. Wipes and recreates the demo tenants (matched by slug).
- * All people, e-mails and phone numbers are synthetic. Product images are synthetic SVG illustrations
- * rendered locally — NOT photographs of real jewellery. Replace them with client-authorised photos.
+ * All people, e-mails and phone numbers are synthetic. Product images are crops of the reference imagery supplied by the
+ * project owner (packages/database/seed-assets). They look like photographs but are AI-style concept imagery: replace with client-authorised photos for real use.
  * Nothing here sends any message.
  */
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
+import path from 'path';
 import sharp from 'sharp';
 import { PrismaClient, type LeadStage } from '@prisma/client';
 import { buildCreativeBrief, createStorage, loadEnv, processCreativeJob, sha256, simulatedDraft } from '@techmunda/core';
@@ -16,68 +17,13 @@ const env = loadEnv({ ...process.env, AI_MODE: 'simulated' } as NodeJS.ProcessEn
 const storage = createStorage(env);
 const PASSWORD = process.env.DEMO_PASSWORD ?? 'Demo@12345';
 
-const GOLD = `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F3D58A"/><stop offset="0.5" stop-color="#C9983F"/><stop offset="1" stop-color="#8F6420"/></linearGradient>`;
-const frame = (inner: string, bg1 = '#7A0F20', bg2 = '#2D0A10') =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200"><defs>${GOLD}
-  <radialGradient id="bg" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="${bg1}"/><stop offset="1" stop-color="${bg2}"/></radialGradient>
-  <radialGradient id="ruby"><stop offset="0" stop-color="#FF6A7A"/><stop offset="1" stop-color="#8A0B1E"/></radialGradient>
-  <radialGradient id="emerald"><stop offset="0" stop-color="#6EE7A8"/><stop offset="1" stop-color="#0B5A36"/></radialGradient>
-  <radialGradient id="diamond"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#BFD6E8"/></radialGradient>
-  <radialGradient id="pearl"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E4D8C3"/></radialGradient></defs>
-  <rect width="1200" height="1200" fill="url(#bg)"/>${inner}
-  <text x="600" y="1160" text-anchor="middle" font-family="Georgia,serif" font-size="22" fill="#F3D58A" fill-opacity="0.65" letter-spacing="3">SYNTHETIC ILLUSTRATION · NOT A PRODUCT PHOTO</text></svg>`;
-
-const dots = (n: number, fx: (t: number) => [number, number], r: (t: number) => number, fill: string) =>
-  Array.from({ length: n }, (_, i) => { const t = i / (n - 1); const [x, y] = fx(t); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r(t).toFixed(1)}" fill="${fill}" stroke="#6B4A14" stroke-width="2"/>`; }).join('');
-
-const ART: Record<string, string> = {
-  necklace: frame(`
-    <path d="M230 260 Q600 900 970 260" fill="none" stroke="url(#gold)" stroke-width="14"/>
-    ${dots(15, (t) => [250 + t * 700, 280 + Math.sin(t * Math.PI) * 520], (t) => 30 + Math.sin(t * Math.PI) * 14, 'url(#gold)')}
-    ${dots(5, (t) => [420 + t * 360, 560 + Math.sin(t * Math.PI) * 150], () => 20, 'url(#ruby)')}
-    <path d="M600 760 L660 860 L600 990 L540 860 Z" fill="url(#gold)" stroke="#6B4A14" stroke-width="3"/><circle cx="600" cy="865" r="34" fill="url(#ruby)" stroke="#6B4A14" stroke-width="3"/>`),
-  bangles: frame(`
-    ${[0, 1, 2, 3].map((i) => `<ellipse cx="${470 + i * 90}" cy="600" rx="${230 - i * 6}" ry="${300 - i * 6}" fill="none" stroke="url(#gold)" stroke-width="34"/><ellipse cx="${470 + i * 90}" cy="600" rx="${230 - i * 6}" ry="${300 - i * 6}" fill="none" stroke="#FFE9A8" stroke-opacity=".35" stroke-width="6" stroke-dasharray="3 22"/>`).join('')}`, '#4A0A15', '#1C0508'),
-  ring: frame(`
-    <ellipse cx="600" cy="700" rx="230" ry="250" fill="none" stroke="url(#gold)" stroke-width="46"/>
-    <path d="M470 470 L730 470 L690 380 L510 380 Z" fill="url(#gold)" stroke="#6B4A14" stroke-width="3"/>
-    <polygon points="600,250 700,380 600,470 500,380" fill="url(#diamond)" stroke="#8FA9BF" stroke-width="3"/>
-    <polygon points="600,250 650,380 600,470" fill="#fff" fill-opacity=".45"/>`, '#2C2C2C', '#0B0B0B'),
-  earrings: frame(`
-    ${[360, 840].map((x) => `<circle cx="${x}" cy="330" r="46" fill="url(#gold)" stroke="#6B4A14" stroke-width="3"/>
-    <path d="M${x} 376 L${x - 120} 640 Q${x} 760 ${x + 120} 640 Z" fill="url(#gold)" stroke="#6B4A14" stroke-width="3"/>
-    <circle cx="${x}" cy="580" r="52" fill="url(#emerald)" stroke="#6B4A14" stroke-width="3"/>
-    ${dots(5, (t) => [x - 100 + t * 200, 720 + Math.sin(t * Math.PI) * 70], () => 18, 'url(#pearl)')}
-    ${dots(5, (t) => [x - 100 + t * 200, 800 + Math.sin(t * Math.PI) * 70], () => 14, 'url(#gold)')}`).join('')}`, '#0E4B3A', '#04201A'),
-  bridal: frame(`
-    <path d="M180 220 Q600 1020 1020 220" fill="none" stroke="url(#gold)" stroke-width="18"/>
-    <path d="M300 260 Q600 800 900 260" fill="none" stroke="url(#gold)" stroke-width="12"/>
-    ${dots(13, (t) => [210 + t * 780, 250 + Math.sin(t * Math.PI) * 600], (t) => 26 + Math.sin(t * Math.PI) * 16, 'url(#ruby)')}
-    ${dots(11, (t) => [320 + t * 560, 300 + Math.sin(t * Math.PI) * 430], () => 22, 'url(#gold)')}
-    <path d="M600 880 L700 800 L740 910 L600 1060 L460 910 L500 800 Z" fill="url(#gold)" stroke="#6B4A14" stroke-width="4"/><circle cx="600" cy="905" r="48" fill="url(#emerald)" stroke="#6B4A14" stroke-width="3"/>`),
-  mangalsutra: frame(`
-    <path d="M300 200 Q600 760 900 200" fill="none" stroke="url(#gold)" stroke-width="10"/>
-    ${dots(40, (t) => [320 + t * 560, 230 + Math.sin(t * Math.PI) * 480], () => 11, '#111')}
-    <circle cx="600" cy="800" r="70" fill="url(#gold)" stroke="#6B4A14" stroke-width="4"/><circle cx="600" cy="800" r="32" fill="url(#diamond)" stroke="#8FA9BF" stroke-width="2"/>`, '#5A1A12', '#240A06'),
-  pearl: frame(`
-    ${dots(18, (t) => [230 + t * 740, 260 + Math.sin(t * Math.PI) * 560], (t) => 28 + Math.sin(t * Math.PI) * 12, 'url(#pearl)')}
-    <circle cx="600" cy="860" r="60" fill="url(#gold)" stroke="#6B4A14" stroke-width="3"/><circle cx="600" cy="860" r="28" fill="url(#ruby)"/>`, '#3B1D3F', '#150817'),
-  temple: frame(`
-    <path d="M200 220 Q600 760 1000 220" fill="none" stroke="url(#gold)" stroke-width="16"/>
-    ${[0, 1, 2, 3, 4, 5, 6].map((i) => `<path d="M${300 + i * 100} ${300 + Math.sin(i / 6 * Math.PI) * 300} l34 70 l-34 70 l-34 -70 z" fill="url(#gold)" stroke="#6B4A14" stroke-width="3"/><circle cx="${300 + i * 100}" cy="${370 + Math.sin(i / 6 * Math.PI) * 300}" r="14" fill="url(#ruby)"/>`).join('')}
-    <path d="M600 820 L680 940 L600 1070 L520 940 Z" fill="url(#gold)" stroke="#6B4A14" stroke-width="4"/>`, '#6A1B0C', '#2A0A04'),
-};
-
 const PRODUCTS = [
-  { sku: 'DN-001', name: 'Diamond Necklace', category: 'Necklace', art: 'necklace', metalType: 'Gold', purity: '22K', stoneType: 'Diamond', weight: 48.5, price: 1250000, availability: 'IN_STOCK' },
-  { sku: 'GB-002', name: 'Gold Bangles (Set of 4)', category: 'Bangles', art: 'bangles', metalType: 'Gold', purity: '22K', stoneType: null, weight: 62.0, price: 216000, availability: 'IN_STOCK' },
-  { sku: 'BS-003', name: 'Bridal Set', category: 'Bridal Set', art: 'bridal', metalType: 'Gold', purity: '22K', stoneType: 'Ruby, Emerald', weight: 120.0, price: 1890000, availability: 'MADE_TO_ORDER' },
-  { sku: 'ER-004', name: 'Emerald Earrings', category: 'Earrings', art: 'earrings', metalType: 'Gold', purity: '18K', stoneType: 'Emerald, Pearl', weight: 14.2, price: 475000, availability: 'IN_STOCK' },
-  { sku: 'PN-005', name: 'Polki Necklace', category: 'Necklace', art: 'temple', metalType: 'Gold', purity: '22K', stoneType: 'Polki', weight: 55.0, price: 840000, availability: 'IN_STOCK' },
-  { sku: 'TJ-006', name: 'Temple Jewellery Haar', category: 'Necklace', art: 'temple', metalType: 'Gold', purity: '22K', stoneType: 'Ruby', weight: 70.3, price: 695000, availability: 'MADE_TO_ORDER' },
-  { sku: 'DR-007', name: 'Diamond Solitaire Ring', category: 'Ring', art: 'ring', metalType: 'Platinum', purity: '950', stoneType: 'Diamond', weight: 6.1, price: 325000, availability: 'IN_STOCK' },
-  { sku: 'PS-008', name: 'Pearl Set', category: 'Necklace', art: 'pearl', metalType: 'Gold', purity: '18K', stoneType: 'Pearl', weight: 38.0, price: 560000, availability: 'IN_STOCK' },
-  { sku: 'MS-009', name: 'Diamond Mangalsutra', category: 'Mangalsutra', art: 'mangalsutra', metalType: 'Gold', purity: '22K', stoneType: 'Diamond', weight: 18.4, price: 210000, availability: 'IN_STOCK' },
+  { sku: 'NK-001', name: 'Emerald Heritage Necklace', category: 'Necklace', photo: 'necklace-emerald', metalType: 'Gold', purity: '22K', stoneType: 'Emerald, Diamond', weight: 78.5, price: 485000, availability: 'IN_STOCK' },
+  { sku: 'ER-004', name: 'Diamond Jhumka Earrings', category: 'Earrings', photo: 'earrings-jhumka', metalType: 'Gold', purity: '18K', stoneType: 'Diamond, Pearl', weight: 21.2, price: 168000, availability: 'IN_STOCK' },
+  { sku: 'RG-012', name: 'Solitaire Diamond Ring', category: 'Ring', photo: 'ring-solitaire', metalType: 'Gold', purity: '18K', stoneType: 'Diamond', weight: 5.8, price: 235000, availability: 'IN_STOCK' },
+  { sku: 'BG-005', name: 'Temple Gold Bangles', category: 'Bangles', photo: 'bangles-temple', metalType: 'Gold', purity: '22K', stoneType: 'Ruby', weight: 64.0, price: 312000, availability: 'MADE_TO_ORDER' },
+  { sku: 'ST-006', name: 'Bridal Gold Set', category: 'Bridal Set', photo: 'bridal-set', metalType: 'Gold', purity: '22K', stoneType: 'Ruby, Emerald, Diamond', weight: 142.0, price: 675000, availability: 'MADE_TO_ORDER' },
+  { sku: 'PD-009', name: 'Floral Pendant', category: 'Pendant', photo: 'pendant-floral', metalType: 'Gold', purity: '18K', stoneType: 'Diamond', weight: 6.4, price: 58000, availability: 'IN_STOCK' },
 ];
 
 const monthsAgo = (m: number, day = 10) => { const d = new Date(); d.setMonth(d.getMonth() - m, day); return d; };
@@ -116,10 +62,11 @@ async function main() {
   const products: Record<string, { id: string; mediaId: string }> = {};
   for (const p of PRODUCTS) {
     const prod = await prisma.product.create({ data: { tenantId: t.id, sku: p.sku, name: p.name, category: p.category, description: `${p.name} — catalogue entry (demo data).`, metalType: p.metalType, purity: p.purity, stoneType: p.stoneType, weight: p.weight, price: p.price, availability: p.availability as any } });
-    const png = await sharp(Buffer.from(ART[p.art])).png().toBuffer();
-    const key = `${t.id}/originals/${randomUUID()}.png`;
-    await storage.put(key, png, 'image/png');
-    const m = await prisma.productMedia.create({ data: { tenantId: t.id, productId: prod.id, storageKey: key, mimeType: 'image/png', fileSize: png.length, checksum: sha256(png), width: 1200, height: 1200, isOriginal: true, rightsConfirmed: true, uploadedBy: designer.id } });
+    const png = await sharp(path.join(__dirname, 'seed-assets', `${p.photo}.jpg`)).rotate().jpeg({ quality: 90 }).toBuffer();
+    const meta = await sharp(png).metadata();
+    const key = `${t.id}/originals/${randomUUID()}.jpg`;
+    await storage.put(key, png, 'image/jpeg');
+    const m = await prisma.productMedia.create({ data: { tenantId: t.id, productId: prod.id, storageKey: key, mimeType: 'image/jpeg', fileSize: png.length, checksum: sha256(png), width: meta.width, height: meta.height, isOriginal: true, rightsConfirmed: true, uploadedBy: designer.id } });
     products[p.sku] = { id: prod.id, mediaId: m.id };
   }
 
@@ -176,7 +123,7 @@ async function main() {
   await prisma.leadNote.create({ data: { tenantId: t.id, leadId: leadIds['Karan Shah'], authorId: sales1.id, body: 'Customer prefers 22K, wants to finalise making charges before Friday.' } });
 
   // creative jobs via the real processor, demo (simulated) adapter. Nothing is auto-approved except one example.
-  const styles = [['DN-001', 'diwali_festive', '4:5'], ['BS-003', 'bridal_collection', '1:1'], ['ER-004', 'premium_black_gold', '9:16']] as const;
+  const styles = [['NK-001', 'diwali_festive', '4:5'], ['ST-006', 'bridal_collection', '1:1'], ['ER-004', 'premium_black_gold', '9:16']] as const;
   const jobIds: string[] = [];
   for (const [sku, style, ratio] of styles) {
     const prod = await prisma.product.findFirstOrThrow({ where: { tenantId: t.id, sku } });
@@ -197,7 +144,7 @@ async function main() {
   await prisma.campaign.create({ data: { tenantId: t.id, name: 'Bridal Season 2026', campaignType: 'BRIDAL', description: 'Bridal collection showcase.', status: 'DRAFT', budget: 250000 } });
 
   // a pending e-mail draft for Priya (deterministic template, labelled simulated). NOT sent, NOT approved.
-  const d = simulatedDraft({ businessName: t.name, senderName: owner.fullName, customerFirstName: 'Priya', productInterest: 'Diamond Necklace', budgetText: '₹10,00,000 – ₹15,00,000', timeline: 'December 2026', appointmentText: null, message: null, tone: 'warm', catalogue: [{ name: 'Diamond Necklace', category: 'Necklace', sku: 'DN-001' }] });
+  const d = simulatedDraft({ businessName: t.name, senderName: owner.fullName, customerFirstName: 'Priya', productInterest: 'Diamond Necklace', budgetText: '₹10,00,000 – ₹15,00,000', timeline: 'December 2026', appointmentText: null, message: null, tone: 'warm', catalogue: [{ name: 'Emerald Heritage Necklace', category: 'Necklace', sku: 'NK-001' }] });
   const draft = await prisma.communicationDraft.create({ data: { tenantId: t.id, leadId: leadIds['Priya Mehta'], recipient: 'priya.mehta@example.com', subject: d.subject, body: d.body + '\n\n—\nIf you would prefer not to hear from us, simply reply "STOP" and we will not contact you again.', status: 'PENDING_REVIEW', aiGenerated: true, aiSource: 'SIMULATED_RULES', createdBy: sales1.id } });
   await prisma.approvalRequest.create({ data: { tenantId: t.id, resourceType: 'COMMUNICATION_DRAFT', resourceId: draft.id, requestedBy: sales1.id } });
   await prisma.activityLog.create({ data: { tenantId: t.id, actorId: sales1.id, entityType: 'communication_draft', entityId: draft.id, leadId: leadIds['Priya Mehta'], action: 'email.draft_created', metadata: { aiGenerated: true, aiSource: 'SIMULATED_RULES' } } });

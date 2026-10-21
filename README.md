@@ -32,7 +32,7 @@ pnpm dev:web    # http://localhost:3000
 Production-style local run: `pnpm build && infrastructure/scripts/run-local.sh start` (and `... stop`). Build the web app with `NODE_ENV` unset/`production`.
 
 ### Docker
-`docker compose up --build` (Postgres, Redis, MinIO, migrate, api, worker, web). `docker compose --profile automation up n8n` adds n8n. *The compose/Dockerfile were written but could not be built in the authoring sandbox (no Docker daemon).*
+`docker compose up --build` (a `render.yaml` blueprint is also included — untested) (Postgres, Redis, MinIO, migrate, api, worker, web). `docker compose --profile automation up n8n` adds n8n. *The compose/Dockerfile were written but could not be built in the authoring sandbox (no Docker daemon).*
 
 ### Demo logins (password `Demo@12345`)
 | Email | Role |
@@ -70,6 +70,12 @@ Royal red `#780514` (actions) · antique gold `#B88A36` (icons/borders) · warm 
 | Images don't load | `API_PUBLIC_URL` must be reachable from the browser (signed media URLs use it). |
 | Login 429 | Login is limited to 10/min/IP. |
 | "Sending is blocked: Gmail is not connected" | Expected until Google OAuth is configured — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#gmail-oauth). |
+
+## Email design
+Approved plain text is rendered into a branded, responsive HTML email (maroon/gold header, serif greeting and signature, opt-out footer) and sent as `multipart/alternative`. Content is HTML-escaped, no links or tracking pixels are added, and the Approvals screen shows the exact preview. Source: `packages/shared/src/email.ts`.
+
+## Imagery
+Seed product, CRM and hero photos are crops of the reference image supplied by the project owner (`packages/database/seed-assets`, ~240 px originals upscaled). Treat them as placeholders and replace them with client-authorised photography.
 
 ## Layout
 `apps/web` (Next.js) · `apps/api` (NestJS) · `apps/worker` (BullMQ) · `packages/shared` (Zod, constants) · `packages/database` (Prisma schema, migrations, seed) · `packages/core` (env, crypto, storage, AI providers, processors) · `automation/n8n` · `infrastructure/` · `docs/`.

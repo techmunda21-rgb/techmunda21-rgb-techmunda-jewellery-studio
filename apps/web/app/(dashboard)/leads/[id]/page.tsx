@@ -63,6 +63,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <Panel>
           <PanelHeader title="Lead Details" />
           <div className="p-5">
+            {l.productImageUrl && <figure className="relative -mx-5 -mt-5 mb-4 overflow-hidden border-b border-gold/30"><img src={l.productImageUrl} alt={l.productImageName ?? 'Product of interest'} className="aspect-[16/8] w-full object-cover" /><figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-maroon-deep/80 to-transparent px-4 pb-2 pt-8 text-xs font-semibold text-ivory">Interested in · {l.productImageName}</figcaption></figure>}
             <div className="mb-4 flex items-center gap-3"><Avatar name={l.contact.name} className="h-14 w-14 text-base" /><div><p className="font-display text-xl font-semibold leading-tight">{l.contact.name}</p><Pill tone={stageTone(l.status)} className="mt-1">{LEAD_STAGE_LABELS[l.status as keyof typeof LEAD_STAGE_LABELS]}</Pill></div></div>
             <ul className="space-y-2 text-sm">
               {l.contact.phone && <li className="flex items-center gap-2"><Phone className="h-4 w-4 text-gold-deep" aria-hidden />{l.contact.phone}</li>}

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/form';
 import { Banner } from '@/components/ui/misc';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GoldDivider, HeroJewel, LogoMark, Motif } from '@/components/brand/brand';
+import { GoldDivider, LogoMark, Motif } from '@/components/brand/brand';
 import { api, errorMessage } from '@/lib/api';
 
 type Values = z.input<typeof publicLeadSchema>;
@@ -54,7 +54,7 @@ export default function EnquiryPage({ params }: { params: Promise<{ slug: string
           <p className="mt-4 text-lg text-maroon-foreground/85">Book a personalized consultation with our jewellery experts.</p>
           <GoldDivider className="my-6 max-w-xs" />
           <ul className="grid gap-3 sm:grid-cols-2">{BENEFITS.map(({ icon: I, label }) => <li key={label} className="flex items-center gap-3 text-sm"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-gold/70 bg-gold/10 text-gold"><I className="h-4 w-4" aria-hidden /></span>{label}</li>)}</ul>
-          <HeroJewel className="mx-auto mt-8 hidden w-[70%] drop-shadow-[0_18px_30px_rgba(0,0,0,0.45)] lg:block" />
+          <img src="/images/hero-bridal.jpg" alt="Bridal gold choker necklace and earrings" className="mt-8 hidden aspect-[16/8] w-full rounded-2xl border border-gold/60 object-cover shadow-lift lg:block" />
         </div>
       </section>
 

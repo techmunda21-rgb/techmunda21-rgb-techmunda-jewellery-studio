@@ -95,11 +95,16 @@ export class GoogleGmailGateway implements GmailGateway {
   }
 }
 
-/** Encodes a plain-text RFC 2822 message as base64url for the Gmail API. Rejects header injection. */
-export function buildRawMessage(m: { from: string; to: string; subject: string; body: string }): string {
+/** Encodes an RFC 2822 message (text/plain, or multipart/alternative when `html` is given) as base64url. Rejects header injection. */
+export function buildRawMessage(m: { from: string; to: string; subject: string; body: string; html?: string }): string {
   for (const v of [m.from, m.to, m.subject]) if (/[\r\n]/.test(v)) throw new GmailError('Header values must not contain line breaks', 'FATAL');
   const subject = /^[\x20-\x7e]*$/.test(m.subject) ? m.subject : `=?UTF-8?B?${Buffer.from(m.subject, 'utf8').toString('base64')}?=`;
-  const body = Buffer.from(m.body.replace(/\r?\n/g, '\r\n'), 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n');
-  const msg = [`From: ${m.from}`, `To: ${m.to}`, `Subject: ${subject}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '', body].join('\r\n');
-  return Buffer.from(msg, 'utf8').toString('base64url');
+  const b64 = (t: string) => Buffer.from(t.replace(/\r?\n/g, '\r\n'), 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n');
+  const head = [`From: ${m.from}`, `To: ${m.to}`, `Subject: ${subject}`, 'MIME-Version: 1.0'];
+  if (!m.html) {
+    return Buffer.from([...head, 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '', b64(m.body)].join('\r\n'), 'utf8').toString('base64url');
+  }
+  const boundary = `tm_${Buffer.from(m.subject + m.to).toString('hex').slice(0, 12)}_${Date.now().toString(36)}`;
+  const parts = [`--${boundary}`, 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '', b64(m.body), `--${boundary}`, 'Content-Type: text/html; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '', b64(m.html), `--${boundary}--`, ''];
+  return Buffer.from([...head, `Content-Type: multipart/alternative; boundary="${boundary}"`, '', ...parts].join('\r\n'), 'utf8').toString('base64url');
 }

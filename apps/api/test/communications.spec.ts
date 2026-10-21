@@ -62,6 +62,10 @@ describe('email approval and send safety', () => {
     const { lead } = await makeLead(w.A.tenantId, w.A.sales.id, { status: 'QUALIFIED' });
     const d = await mkDraft(lead.id);
     await approve(d.id);
+    const mime = Buffer.from([...ctx.gmail.drafts.values()][0], 'base64url').toString('utf8');
+    expect(mime).toMatch(/multipart\/alternative/);
+    expect(mime).toMatch(/Content-Type: text\/plain/);
+    expect(mime).toMatch(/Content-Type: text\/html/);
     const res = await send(d.id, 1);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ status: 'SENT', providerMessageId: 'gmsg-1', duplicate: false });

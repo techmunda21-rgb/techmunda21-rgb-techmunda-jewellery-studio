@@ -16,7 +16,7 @@ test('enquiry → AI qualification → CRM → draft → approve → send is hon
   // public enquiry: consent is required and unchecked by default
   await page.goto('/enquiry/suvarna-heritage');
   await expect(page.getByRole('checkbox')).not.toBeChecked();
-  await page.locator('#name').fill('Flow Tester');
+  await page.locator('#name').fill(`Flow Tester ${stamp}`);
   await page.locator('#email').fill(email);
   await page.locator('#productInterest').selectOption('Necklace');
   await page.locator('#budgetRange').selectOption('₹10L – ₹15L');
@@ -44,7 +44,7 @@ test('enquiry → AI qualification → CRM → draft → approve → send is hon
 
   // visible in CRM
   await page.goto('/crm');
-  await expect(page.getByText('Flow Tester')).toBeVisible();
+  await expect(page.getByText(`Flow Tester ${stamp}`).first()).toBeVisible();
 
   // draft → approve (does not send) → Send is blocked because Gmail is not connected
   await page.goto(`/leads/${lead.id}`);

@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { renderEmailHtml } from '@techmunda/shared';
 import { signPayload, verifyPayload, scrubSecrets } from '@techmunda/core';
 import { AuditService } from '../audit/audit.service';
 import { found, pageArgs, paged } from '../common/helpers';
@@ -24,6 +25,10 @@ export class CommunicationsService {
     private readonly leads: LeadsService,
     private readonly audit: AuditService,
   ) {}
+
+  private async businessName(tenantId: string) {
+    return (await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { name: true } })).name;
+  }
 
   rawDraft(tenantId: string, id: string) {
     return this.prisma.communicationDraft.findFirst({ where: { id, tenantId }, include: { lead: { include: { contact: true } } } });
@@ -139,7 +144,7 @@ export class CommunicationsService {
     if (state === 'REVOKED') gmailDraft = { state: 'REVOKED', message: 'The Google connection was revoked. Reconnect to send.' };
     if (conn) {
       try {
-        const raw = buildRawMessage({ from: conn.accountIdentifier, to: d.recipient, subject: d.subject, body: d.body });
+        const raw = buildRawMessage({ from: conn.accountIdentifier, to: d.recipient, subject: d.subject, body: d.body, html: renderEmailHtml({ subject: d.subject, body: d.body, businessName: await this.businessName(user.tenantId) }) });
         const { draftId } = await this.gmail.upsertDraft(conn, raw, d.providerDraftId);
         await this.prisma.communicationDraft.update({ where: { id }, data: { providerDraftId: draftId } });
         gmailDraft = { state: 'CREATED' };
@@ -218,7 +223,7 @@ export class CommunicationsService {
     if (claimed.count !== 1) throw new ConflictException({ code: 'SEND_IN_PROGRESS', message: 'Another send request is already processing this draft' });
 
     try {
-      const raw = buildRawMessage({ from: conn.accountIdentifier, to: d.recipient, subject: d.subject, body: d.body });
+      const raw = buildRawMessage({ from: conn.accountIdentifier, to: d.recipient, subject: d.subject, body: d.body, html: renderEmailHtml({ subject: d.subject, body: d.body, businessName: await this.businessName(user.tenantId) }) });
       const sent = await this.withRetry(async () => {
         const { draftId } = await this.gmail.upsertDraft(conn, raw, d.providerDraftId); // make Gmail hold exactly the approved content
         if (draftId !== d.providerDraftId) await this.prisma.communicationDraft.update({ where: { id }, data: { providerDraftId: draftId } });

@@ -61,7 +61,6 @@ for (const vp of VIEWPORTS) {
       const assets = await (await page.request.get(`${api}/creatives/jobs`, { headers: { Authorization: `Bearer ${token}` } })).json();
       await page.goto(`/creative-studio`);
       await page.waitForLoadState('networkidle');
-      await page.getByRole('button', { name: /Diamond Necklace/ }).first().click().catch(() => undefined);
       await page.getByRole('tab', { name: 'Review & Library' }).click();
       await page.waitForLoadState('networkidle');
       await page.getByRole('button', { name: 'Open in review' }).first().click();

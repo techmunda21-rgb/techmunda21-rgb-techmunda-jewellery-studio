@@ -113,6 +113,21 @@ describe('crypto', () => {
   });
 });
 
+describe('branded email rendering', () => {
+  const body = 'Dear Priya,\n\nThank you for your interest in <b>necklaces</b> & more.\n\nWarm regards,\nAarav Sharma\nSuvarna Heritage Jewellers\n\n—\nIf you would prefer not to hear from us, simply reply "STOP".';
+  it('escapes all content, keeps the approved text verbatim and adds only chrome', async () => {
+    const { renderEmailHtml } = await import('@techmunda/shared');
+    const html = renderEmailHtml({ subject: 'Hi <script>', body, businessName: 'Suvarna <Heritage>' });
+    expect(html).not.toMatch(/<script|<b>necklaces/);
+    expect(html).toContain('&lt;b&gt;necklaces&lt;/b&gt; &amp; more');
+    expect(html).toContain('Dear Priya,');
+    expect(html).toContain('Aarav Sharma');
+    expect(html).toContain('reply &quot;STOP&quot;');
+    expect(html).toContain('Suvarna &lt;Heritage&gt;');
+    expect(html).not.toMatch(/https?:\/\//); // no links/tracking pixels are ever injected
+  });
+});
+
 describe('config and image provider', () => {
   it('env validation fails fast with a readable message', () => {
     expect(() => loadEnv({ DATABASE_URL: 'x', JWT_ACCESS_SECRET: 'short' } as any)).toThrow(/JWT_ACCESS_SECRET/);
