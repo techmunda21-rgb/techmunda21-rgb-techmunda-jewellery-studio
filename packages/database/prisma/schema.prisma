@@ -1,0 +1,577 @@
+// Techmunda AI Jewellery Growth Studio — multi-tenant schema.
+// Every tenant-owned table carries tenant_id and is always queried with it server-side.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLATFORM_ADMIN
+  TENANT_OWNER
+  MANAGER
+  DESIGNER
+  SALES_EXECUTIVE
+  VIEWER
+}
+
+enum RecordStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum Availability {
+  IN_STOCK
+  MADE_TO_ORDER
+  OUT_OF_STOCK
+}
+
+enum ReviewStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum MediaType {
+  ORIGINAL
+  GENERATED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  READY
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum ConsentStatus {
+  GRANTED
+  NOT_GRANTED
+  WITHDRAWN
+}
+
+enum LeadStage {
+  NEW
+  QUALIFIED
+  CONTACTED
+  APPOINTMENT
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum QualificationSource {
+  LLM
+  SIMULATED_RULES
+}
+
+enum DraftStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SENDING
+  SENT
+  SEND_FAILED
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  REVOKED
+  ERROR
+  DISCONNECTED
+}
+
+enum RunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model Tenant {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String       @unique
+  country   String       @default("IN")
+  currency  String       @default("INR")
+  timezone  String       @default("Asia/Kolkata")
+  status    RecordStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  users        User[]
+  products     Product[]
+  media        ProductMedia[]
+  creativeJobs CreativeJob[]
+  assets       GeneratedAsset[]
+  campaigns    Campaign[]
+  contacts     Contact[]
+  leads        Lead[]
+  opportunities Opportunity[]
+  drafts       CommunicationDraft[]
+  approvals    ApprovalRequest[]
+  integrations IntegrationConnection[]
+  runs         AutomationRun[]
+  activities   ActivityLog[]
+  audits       AuditLog[]
+  notes        LeadNote[]
+  tasks        Task[]
+  notifications Notification[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  fullName     String       @map("full_name")
+  email        String
+  passwordHash String       @map("password_hash")
+  role         Role
+  status       RecordStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+/// Rotating refresh tokens. Only a SHA-256 hash is stored. Reuse of a rotated token revokes the family.
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  familyId   String    @map("family_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model Product {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  sku          String
+  name         String
+  category     String
+  description  String?
+  metalType    String?      @map("metal_type")
+  purity       String?
+  stoneType    String?      @map("stone_type")
+  weight       Decimal?     @db.Decimal(10, 3)
+  price        Decimal?     @db.Decimal(14, 2)
+  currency     String       @default("INR")
+  availability Availability @default(IN_STOCK)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  media  ProductMedia[]
+  jobs   CreativeJob[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, category])
+  @@index([tenantId, createdAt])
+  @@map("products")
+}
+
+model ProductMedia {
+  id              String       @id @default(uuid()) @db.Uuid
+  tenantId        String       @map("tenant_id") @db.Uuid
+  productId       String       @map("product_id") @db.Uuid
+  storageKey      String       @map("storage_key")
+  mimeType        String       @map("mime_type")
+  fileSize        Int          @map("file_size")
+  checksum        String
+  mediaType       MediaType    @default(ORIGINAL) @map("media_type")
+  isOriginal      Boolean      @default(true) @map("is_original")
+  rightsConfirmed Boolean      @default(false) @map("rights_confirmed")
+  width           Int?
+  height          Int?
+  reviewStatus    ReviewStatus @default(APPROVED) @map("review_status")
+  uploadedBy      String       @map("uploaded_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  jobs    CreativeJob[]
+
+  @@unique([tenantId, storageKey])
+  @@index([tenantId, productId])
+  @@map("product_media")
+}
+
+model CreativeJob {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  productId     String    @map("product_id") @db.Uuid
+  sourceMediaId String    @map("source_media_id") @db.Uuid
+  prompt        String
+  brief         Json?
+  style         String
+  aspectRatio   String    @default("1:1") @map("aspect_ratio")
+  variations    Int       @default(2)
+  provider      String
+  simulated     Boolean   @default(false)
+  status        JobStatus @default(QUEUED)
+  errorMessage  String?   @map("error_message")
+  requestedBy   String    @map("requested_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  completedAt   DateTime? @map("completed_at")
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source  ProductMedia     @relation(fields: [sourceMediaId], references: [id])
+  assets  GeneratedAsset[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("creative_jobs")
+}
+
+model GeneratedAsset {
+  id            String       @id @default(uuid()) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  creativeJobId String       @map("creative_job_id") @db.Uuid
+  storageKey    String       @map("storage_key")
+  assetType     String       @default("IMAGE") @map("asset_type")
+  aspectRatio   String       @default("1:1") @map("aspect_ratio")
+  simulated     Boolean      @default(false)
+  accuracyFlags Json         @default("[]") @map("accuracy_flags")
+  reviewStatus  ReviewStatus @default(PENDING_REVIEW) @map("review_status")
+  reviewNotes   String?      @map("review_notes")
+  reviewedBy    String?      @map("reviewed_by") @db.Uuid
+  reviewedAt    DateTime?    @map("reviewed_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  job            CreativeJob     @relation(fields: [creativeJobId], references: [id], onDelete: Cascade)
+  campaignAssets CampaignAsset[]
+
+  @@index([tenantId, reviewStatus])
+  @@index([creativeJobId])
+  @@map("generated_assets")
+}
+
+model Campaign {
+  id           String         @id @default(uuid()) @db.Uuid
+  tenantId     String         @map("tenant_id") @db.Uuid
+  name         String
+  campaignType String         @map("campaign_type")
+  description  String?
+  startDate    DateTime?      @map("start_date")
+  endDate      DateTime?      @map("end_date")
+  status       CampaignStatus @default(DRAFT)
+  budget       Decimal?       @db.Decimal(14, 2)
+  currency     String         @default("INR")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets CampaignAsset[]
+
+  @@index([tenantId, status])
+  @@map("campaigns")
+}
+
+model CampaignAsset {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  campaignId       String   @map("campaign_id") @db.Uuid
+  generatedAssetId String   @map("generated_asset_id") @db.Uuid
+  status           String   @default("ATTACHED")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  asset    GeneratedAsset @relation(fields: [generatedAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, generatedAssetId])
+  @@index([tenantId])
+  @@map("campaign_assets")
+}
+
+model Contact {
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  name             String
+  email            String?
+  phone            String?
+  country          String?
+  city             String?
+  consentStatus    ConsentStatus @default(NOT_GRANTED) @map("consent_status")
+  consentSource    String?       @map("consent_source")
+  consentText      String?       @map("consent_text")
+  consentIp        String?       @map("consent_ip")
+  consentTimestamp DateTime?     @map("consent_timestamp")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leads  Lead[]
+
+  @@index([tenantId, email])
+  @@index([tenantId, phone])
+  @@map("contacts")
+}
+
+model Lead {
+  id                    String               @id @default(uuid()) @db.Uuid
+  tenantId              String               @map("tenant_id") @db.Uuid
+  contactId             String               @map("contact_id") @db.Uuid
+  source                String
+  productInterest       String?              @map("product_interest")
+  preferredMaterial     String?              @map("preferred_material")
+  budgetMin             Decimal?             @map("budget_min") @db.Decimal(14, 2)
+  budgetMax             Decimal?             @map("budget_max") @db.Decimal(14, 2)
+  purchaseTimeline      String?              @map("purchase_timeline")
+  appointmentDate       DateTime?            @map("appointment_date")
+  message               String?
+  leadScore             Int?                 @map("lead_score")
+  qualificationReason   String?              @map("qualification_reason")
+  qualificationSource   QualificationSource? @map("qualification_source")
+  qualificationData     Json?                @map("qualification_data")
+  requiresHumanReview   Boolean              @default(true) @map("requires_human_review")
+  status                LeadStage            @default(NEW)
+  assignedTo            String?              @map("assigned_to") @db.Uuid
+  nextFollowUpAt        DateTime?            @map("next_follow_up_at")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact       Contact              @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  opportunities Opportunity[]
+  drafts        CommunicationDraft[]
+  notes         LeadNote[]
+  tasks         Task[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, nextFollowUpAt])
+  @@index([tenantId, assignedTo])
+  @@map("leads")
+}
+
+model LeadNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  leadId    String   @map("lead_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, leadId])
+  @@map("lead_notes")
+}
+
+model Task {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  leadId      String    @map("lead_id") @db.Uuid
+  title       String
+  dueAt       DateTime? @map("due_at")
+  completedAt DateTime? @map("completed_at")
+  assignedTo  String?   @map("assigned_to") @db.Uuid
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, dueAt])
+  @@index([tenantId, leadId])
+  @@map("tasks")
+}
+
+model Opportunity {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  leadId            String    @map("lead_id") @db.Uuid
+  name              String
+  estimatedValue    Decimal?  @map("estimated_value") @db.Decimal(14, 2)
+  currency          String    @default("INR")
+  stage             LeadStage @default(NEW)
+  expectedCloseDate DateTime? @map("expected_close_date")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, stage])
+  @@index([tenantId, leadId])
+  @@map("opportunities")
+}
+
+model CommunicationDraft {
+  id                String      @id @default(uuid()) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  leadId            String      @map("lead_id") @db.Uuid
+  channel           String      @default("GMAIL")
+  recipient         String
+  subject           String
+  body              String
+  status            DraftStatus @default(PENDING_REVIEW)
+  /// Increments on every content edit; approval binds to a specific version.
+  version           Int         @default(1)
+  approvedVersion   Int?        @map("approved_version")
+  aiGenerated       Boolean     @default(false) @map("ai_generated")
+  aiSource          String?     @map("ai_source")
+  providerDraftId   String?     @map("provider_draft_id")
+  providerMessageId String?     @map("provider_message_id")
+  sendIdempotencyKey String?    @unique @map("send_idempotency_key")
+  sendAttempts      Int         @default(0) @map("send_attempts")
+  lastError         String?     @map("last_error")
+  createdBy         String      @map("created_by") @db.Uuid
+  approvedBy        String?     @map("approved_by") @db.Uuid
+  approvedAt        DateTime?   @map("approved_at")
+  sentBy            String?     @map("sent_by") @db.Uuid
+  sentAt            DateTime?   @map("sent_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, leadId])
+  @@map("communication_drafts")
+}
+
+model ApprovalRequest {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  resourceType String       @map("resource_type")
+  resourceId   String       @map("resource_id") @db.Uuid
+  requestedBy  String       @map("requested_by") @db.Uuid
+  reviewedBy   String?      @map("reviewed_by") @db.Uuid
+  status       ReviewStatus @default(PENDING_REVIEW)
+  reviewNotes  String?      @map("review_notes")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  reviewedAt   DateTime?    @map("reviewed_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, resourceType, resourceId])
+  @@map("approval_requests")
+}
+
+model IntegrationConnection {
+  id                           String            @id @default(uuid()) @db.Uuid
+  tenantId                     String            @map("tenant_id") @db.Uuid
+  provider                     String
+  accountIdentifier            String            @map("account_identifier")
+  /// AES-256-GCM ciphertext of the OAuth credential bundle (never plaintext).
+  encryptedCredentialsReference String           @map("encrypted_credentials_reference")
+  scopes                       String?
+  status                       IntegrationStatus @default(ACTIVE)
+  lastError                    String?           @map("last_error")
+  createdAt                    DateTime          @default(now()) @map("created_at")
+  updatedAt                    DateTime          @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, accountIdentifier])
+  @@index([tenantId, provider])
+  @@map("integration_connections")
+}
+
+model AutomationRun {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  workflowName  String    @map("workflow_name")
+  correlationId String    @map("correlation_id")
+  status        RunStatus @default(RUNNING)
+  attemptCount  Int       @default(1) @map("attempt_count")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  errorMessage  String?   @map("error_message")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, workflowName, correlationId])
+  @@index([tenantId, status])
+  @@map("automation_runs")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id") @db.Uuid
+  /// Denormalised lead id so the CRM timeline is a single indexed query.
+  leadId     String?  @map("lead_id") @db.Uuid
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, leadId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@map("activity_logs")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  ipAddress    String?  @map("ip_address")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, resourceType, resourceId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, readAt])
+  @@map("notifications")
+}

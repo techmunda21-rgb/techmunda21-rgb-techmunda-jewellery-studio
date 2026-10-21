@@ -1,0 +1,176 @@
+{
+  "name": "Techmunda · A · Lead capture",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Lead webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        40,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "techmunda-lead-capture",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "techmunda-techmunda-lead-capture"
+    },
+    {
+      "id": "n1",
+      "name": "Validate signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.INBOUND_WEBHOOK_SECRET;\nif (!secret) throw new Error('INBOUND_WEBHOOK_SECRET is not configured');\nconst raw = $input.first().json.rawBody ?? '';\nconst given = ($input.first().json.headers['x-signature'] || '').replace(/^sha256=/, '');\nconst expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\nconst ok = given.length === expected.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));\nif (!ok) throw new Error('Invalid webhook signature');\nreturn [{ json: { payload: $input.first().json.body } }];"
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Validate payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const p = $input.first().json.payload || {};\nconst errors = [];\nif (!p.name || String(p.name).trim().length < 2) errors.push('name');\nif (!p.email && !p.phone) errors.push('email or phone');\nif (p.consent !== true) errors.push('explicit consent (consent must be true)');\nif (!p.tenantSlug) errors.push('tenantSlug');\nif (errors.length) throw new Error('Invalid payload: ' + errors.join(', '));\nconst { name, email, phone, productInterest, budgetRange, preferredMaterial, purchaseTimeline, appointmentDate, message, consent, tenantSlug } = p;\nconst correlationId = p.correlationId || ('lead-' + (email || phone) + '-' + new Date().toISOString().slice(0, 10));\nreturn [{ json: { lead: { tenantSlug, name, email, phone, productInterest, budgetRange, preferredMaterial, purchaseTimeline, appointmentDate, message, consent }, correlationId } }];"
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Sign request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst tenantId = $env.TENANT_ID;\nconst secret = $env.TENANT_WEBHOOK_SECRET;\nif (!tenantId || !secret) throw new Error('TENANT_ID / TENANT_WEBHOOK_SECRET are not configured in n8n');\nconst body = JSON.stringify({ correlationId: $json.correlationId, lead: $json.lead });\nconst ts = String(Math.floor(Date.now() / 1000));\nconst signature = crypto.createHmac('sha256', secret).update(ts + '.' + body).digest('hex');\nreturn [{ json: { url: $env.API_BASE_URL + '/automation/lead-capture', body, headers: { 'content-type': 'application/json', 'x-tenant-id': tenantId, 'x-automation-timestamp': ts, 'x-automation-signature': signature } } }];"
+      }
+    },
+    {
+      "id": "n4",
+      "name": "Create lead + queue AI qualification + notify sales user (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "n5",
+      "name": "Record failure (visible in n8n execution log)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        380
+      ],
+      "parameters": {},
+      "notes": "No credentials or message bodies are logged. The API also records every run in automation_runs."
+    }
+  ],
+  "connections": {
+    "Lead webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate signature": {
+      "main": [
+        [
+          {
+            "node": "Validate payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate payload": {
+      "main": [
+        [
+          {
+            "node": "Sign request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign request": {
+      "main": [
+        [
+          {
+            "node": "Create lead + queue AI qualification + notify sales user (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create lead + queue AI qualification + notify sales user (API)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Record failure (visible in n8n execution log)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "tags": [
+    {
+      "name": "techmunda"
+    }
+  ],
+  "meta": {
+    "description": "Tenant-aware. Uses n8n environment variables API_BASE_URL, TENANT_ID, TENANT_WEBHOOK_SECRET (and INBOUND_WEBHOOK_SECRET for inbound webhooks)."
+  }
+}

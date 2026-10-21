@@ -1,0 +1,176 @@
+{
+  "name": "Techmunda · D · Approved send (human-confirmed)",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Explicit send request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        40,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "techmunda-approved-send",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "techmunda-techmunda-approved-send"
+    },
+    {
+      "id": "n1",
+      "name": "Validate signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.INBOUND_WEBHOOK_SECRET;\nif (!secret) throw new Error('INBOUND_WEBHOOK_SECRET is not configured');\nconst raw = $input.first().json.rawBody ?? '';\nconst given = ($input.first().json.headers['x-signature'] || '').replace(/^sha256=/, '');\nconst expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');\nconst ok = given.length === expected.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));\nif (!ok) throw new Error('Invalid webhook signature');\nreturn [{ json: { payload: $input.first().json.body } }];"
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Validate payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const p = $input.first().json.payload || {};\nif (!p.confirmationToken) throw new Error('A human send confirmation token is required. Workflows cannot send on their own.');\nif (!p.draftId) throw new Error('draftId is required');\nreturn [{ json: { confirmationToken: p.confirmationToken, correlationId: 'send-' + p.draftId + '-' + String(p.version || '') } }];"
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Sign request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst tenantId = $env.TENANT_ID;\nconst secret = $env.TENANT_WEBHOOK_SECRET;\nif (!tenantId || !secret) throw new Error('TENANT_ID / TENANT_WEBHOOK_SECRET are not configured in n8n');\nconst body = JSON.stringify({ correlationId: $json.correlationId, confirmationToken: $json.confirmationToken });\nconst ts = String(Math.floor(Date.now() / 1000));\nconst signature = crypto.createHmac('sha256', secret).update(ts + '.' + body).digest('hex');\nreturn [{ json: { url: $env.API_BASE_URL + '/automation/send-approved', body, headers: { 'content-type': 'application/json', 'x-tenant-id': tenantId, 'x-automation-timestamp': ts, 'x-automation-signature': signature } } }];"
+      }
+    },
+    {
+      "id": "n4",
+      "name": "Verify approval version + permission + consent → Gmail API → record result + CRM activity (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "n5",
+      "name": "Record failure (visible in n8n execution log)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        380
+      ],
+      "parameters": {},
+      "notes": "No credentials or message bodies are logged. The API also records every run in automation_runs."
+    }
+  ],
+  "connections": {
+    "Explicit send request": {
+      "main": [
+        [
+          {
+            "node": "Validate signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate signature": {
+      "main": [
+        [
+          {
+            "node": "Validate payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate payload": {
+      "main": [
+        [
+          {
+            "node": "Sign request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign request": {
+      "main": [
+        [
+          {
+            "node": "Verify approval version + permission + consent → Gmail API → record result + CRM activity (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify approval version + permission + consent → Gmail API → record result + CRM activity (API)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Record failure (visible in n8n execution log)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "tags": [
+    {
+      "name": "techmunda"
+    }
+  ],
+  "meta": {
+    "description": "Tenant-aware. Uses n8n environment variables API_BASE_URL, TENANT_ID, TENANT_WEBHOOK_SECRET (and INBOUND_WEBHOOK_SECRET for inbound webhooks)."
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "name": "Techmunda · C · Follow-up drafts (review only)",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        40,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Sign request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst tenantId = $env.TENANT_ID;\nconst secret = $env.TENANT_WEBHOOK_SECRET;\nif (!tenantId || !secret) throw new Error('TENANT_ID / TENANT_WEBHOOK_SECRET are not configured in n8n');\nconst body = JSON.stringify({ correlationId: 'followup-' + new Date().toISOString().slice(0, 13), limit: 10 });\nconst ts = String(Math.floor(Date.now() / 1000));\nconst signature = crypto.createHmac('sha256', secret).update(ts + '.' + body).digest('hex');\nreturn [{ json: { url: $env.API_BASE_URL + '/automation/followups/draft-due', body, headers: { 'content-type': 'application/json', 'x-tenant-id': tenantId, 'x-automation-timestamp': ts, 'x-automation-signature': signature } } }];"
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Draft follow-ups for consented, due leads → PENDING_REVIEW + notify (API, never sends)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "n4",
+      "name": "Record failure (visible in n8n execution log)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        760,
+        380
+      ],
+      "parameters": {},
+      "notes": "No credentials or message bodies are logged. The API also records every run in automation_runs."
+    }
+  ],
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Sign request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign request": {
+      "main": [
+        [
+          {
+            "node": "Draft follow-ups for consented, due leads → PENDING_REVIEW + notify (API, never sends)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft follow-ups for consented, due leads → PENDING_REVIEW + notify (API, never sends)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Record failure (visible in n8n execution log)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "tags": [
+    {
+      "name": "techmunda"
+    }
+  ],
+  "meta": {
+    "description": "Tenant-aware. Uses n8n environment variables API_BASE_URL, TENANT_ID, TENANT_WEBHOOK_SECRET (and INBOUND_WEBHOOK_SECRET for inbound webhooks)."
+  }
+}

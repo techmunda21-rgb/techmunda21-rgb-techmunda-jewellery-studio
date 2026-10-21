@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+.env
+.env.local
+storage-data
+*.log
+coverage
+test-results
+playwright-report
+.turbo
+.logs

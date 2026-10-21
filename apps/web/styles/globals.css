@@ -1,0 +1,81 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/playfair-display/500.css';
+@import '@fontsource/playfair-display/600.css';
+@import '@fontsource/playfair-display/700.css';
+@import '@fontsource/cormorant-garamond/500.css';
+@import '@fontsource/cormorant-garamond/600.css';
+@import '@fontsource/cormorant-garamond/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───────────────────────── Design tokens ─────────────────────────
+   Royal red / antique gold / warm cream heritage palette.
+   Values are space-separated RGB channels so Tailwind can apply alpha (bg-gold/20).        */
+:root {
+  --royal: 120 5 20;            /* #780514  primary actions & highlights */
+  --royal-hover: 94 4 16;       /* hover/pressed */
+  --on-royal: 255 249 239;
+  --gold: 184 138 54;           /* #B88A36  icons, borders, accents */
+  --gold-soft: 234 215 174;
+  --gold-deep: 138 100 30;      /* gold text on ivory with AA contrast */
+  --cream: 248 238 219;         /* #F8EEDB  app background */
+  --ivory: 255 249 239;         /* #FFF9EF  cards, forms, panels */
+  --maroon: 70 19 24;           /* #461318  sidebar & premium sections */
+  --maroon-deep: 46 10 14;
+  --on-maroon: 248 238 219;
+  --ink: 53 27 29;              /* #351B1D  body text */
+  --ink-muted: 112 82 80;
+  --line: 184 138 54;           /* hairline borders use gold at low alpha */
+  --focus: 184 138 54;
+
+  /* workflow states — must stay visually distinct from one another */
+  --status-draft: 122 106 92;
+  --status-pending: 176 112 10;
+  --status-approved: 38 112 66;
+  --status-sent: 36 88 140;
+  --status-rejected: 150 28 44;
+  --stage-qualified: 26 62 74;
+  --stage-demo: 214 176 96;
+}
+
+@layer base {
+  html { color-scheme: light; -webkit-text-size-adjust: 100%; }
+  body { @apply bg-cream font-sans text-ink antialiased; font-feature-settings: 'cv11', 'ss01'; }
+  h1, h2, h3, h4, .font-display { font-variant-numeric: lining-nums; font-feature-settings: 'lnum' 1; }
+  h1, h2, h3, h4 { @apply font-display text-ink; letter-spacing: -0.005em; }
+  *:focus-visible { outline: 2px solid rgb(var(--focus)); outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: rgb(var(--gold) / 0.35); }
+  input, select, textarea, button { font-family: inherit; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+}
+
+@layer components {
+  .gold-border { @apply border border-gold/40; }
+  .panel { @apply min-w-0 rounded-2xl border border-gold/35 bg-ivory shadow-card; }
+  .eyebrow { @apply font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-deep; }
+  .field { @apply w-full rounded-lg border border-gold/45 bg-ivory px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 transition focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 disabled:cursor-not-allowed disabled:opacity-60; }
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--gold) / 0.5) transparent; }
+  .motif-bg { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='%23B88A36' stroke-opacity='0.16' stroke-width='1'><circle cx='60' cy='60' r='6'/><path d='M60 54 C48 40 48 26 60 14 C72 26 72 40 60 54Z'/><path d='M60 66 C72 80 72 94 60 106 C48 94 48 80 60 66Z'/><path d='M54 60 C40 72 26 72 14 60 C26 48 40 48 54 60Z'/><path d='M66 60 C80 48 94 48 106 60 C94 72 80 72 66 60Z'/></g></svg>"); background-size: 120px 120px; }
+}
+
+/* Style-preset swatches for the Creative Studio (they preview the *output* palettes, so they live with the tokens). */
+:root {
+  --sw-luxury-a: 255 249 239; --sw-luxury-b: 234 217 184;
+  --sw-bridal-a: 138 10 27;   --sw-bridal-b: 70 19 24;
+  --sw-diwali-a: 246 183 60;  --sw-diwali-b: 122 46 14;
+  --sw-minimal-a: 255 255 255; --sw-minimal-b: 244 235 218;
+  --sw-black-a: 40 40 40;     --sw-black-b: 8 8 8;
+  --sw-lifestyle-a: 249 222 196; --sw-lifestyle-b: 248 238 219;
+  --sw-dubai-a: 233 230 225;  --sw-dubai-b: 189 182 170;
+}
+  .sw-luxury_editorial { background: linear-gradient(135deg, rgb(var(--sw-luxury-a)), rgb(var(--sw-luxury-b))); }
+  .sw-bridal_collection { background: linear-gradient(135deg, rgb(var(--sw-bridal-a)), rgb(var(--sw-bridal-b))); }
+  .sw-diwali_festive { background: radial-gradient(circle at 30% 30%, rgb(var(--sw-diwali-a)), rgb(var(--sw-diwali-b))); }
+  .sw-minimal_ecommerce { background: linear-gradient(135deg, rgb(var(--sw-minimal-a)), rgb(var(--sw-minimal-b))); }
+  .sw-premium_black_gold { background: radial-gradient(circle at 50% 40%, rgb(var(--sw-black-a)), rgb(var(--sw-black-b))); }
+  .sw-lifestyle_campaign { background: linear-gradient(160deg, rgb(var(--sw-lifestyle-a)), rgb(var(--sw-lifestyle-b))); }
+  .sw-dubai_boutique { background: linear-gradient(135deg, rgb(var(--sw-dubai-a)), rgb(var(--sw-dubai-b))); }
