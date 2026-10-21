@@ -9,7 +9,7 @@ import { signIn } from './helpers';
  */
 const SHOTS = process.env.SHOTS_DIR;
 const VIEWPORTS = [{ name: 'desktop', width: 1440, height: 900 }, { name: 'tablet', width: 820, height: 1100 }, { name: 'mobile', width: 390, height: 844 }];
-const PUBLIC = [['01-login', '/login'], ['06-enquiry', '/enquiry/suvarna-heritage']] as const;
+const PUBLIC = [['01-login', '/login'], ['06-enquiry', '/enquiry/suvarna-heritage'], ['14-signup', '/signup'], ['15-privacy', '/legal/privacy'], ['16-terms', '/legal/terms']] as const;
 const PAGES = [
   ['02-overview', '/overview', true], ['03-products', '/products', true], ['04-creative-studio', '/creative-studio', true], ['08-crm', '/crm', true], ['09-approvals', '/approvals', true], ['10-leads', '/leads', true], ['11-analytics', '/analytics', true],
   ['12-campaigns', '/campaigns', true], ['13-settings', '/settings', true],

@@ -1,15 +1,20 @@
 'use client';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link2, ShieldCheck, Unplug, Users } from 'lucide-react';
+import { Link2, ShieldCheck, Trash2, Unplug, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader, Panel, PanelHeader } from '@/components/ui/card';
 import { Avatar, Banner, QueryError } from '@/components/ui/misc';
 import { Pill } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
-import { api, errorMessage } from '@/lib/api';
+import { api, downloadFile, errorMessage } from '@/lib/api';
+import Link from 'next/link';
+import { Download, FileText } from 'lucide-react';
+import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/form';
+import { useRouter } from 'next/navigation';
 import { ROLE_LABEL, useAuth } from '@/lib/auth';
 import { dateTime } from '@/lib/format';
 import { useAiStatus, useIntegrationStatus, useTeam } from '@/hooks/queries';
@@ -18,6 +23,53 @@ const GOOGLE_MSG: Record<string, [string, 'info' | 'warn' | 'error']> = {
   connected: ['Google account connected.', 'info'], denied: ['Google access was declined. Nothing was connected.', 'warn'], invalid_state: ['The sign-in link expired or was already used. Please try again.', 'error'],
   no_refresh_token: ['Google did not return offline access. Remove the app from your Google account permissions and reconnect.', 'error'], error: ['Connecting to Google failed. Please try again.', 'error'],
 };
+
+function PrivacyPanel() {
+  const toast = useToast();
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const [del, setDel] = useState(false);
+  const [pw, setPw] = useState('');
+  const [phrase, setPhrase] = useState('');
+  const q = useQuery({ queryKey: ['privacy'], queryFn: () => api<any>('/account/privacy') });
+  const exp = useMutation({ mutationFn: () => downloadFile('/account/export', 'techmunda-workspace-export.json'), onSuccess: () => toast.success('Export downloaded.'), onError: (e) => toast.error(errorMessage(e)) });
+  const remove = useMutation({
+    mutationFn: () => api('/account', { method: 'DELETE', body: { password: pw, confirm: phrase } }),
+    onSuccess: async () => { toast.success('Workspace deleted.'); await signOut(); router.replace('/login'); },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+  const p = q.data;
+  return (
+    <Panel>
+      <PanelHeader title="Privacy & data" description="Your policies, verification status, data export and deletion." action={<ShieldCheck className="h-5 w-5 text-gold-deep" aria-hidden />} />
+      <div className="space-y-4 p-5 text-sm">
+        {q.isLoading || !p ? <Skeleton className="h-24" /> : (<>
+          <dl className="grid gap-4 sm:grid-cols-3">
+            <div><dt className="eyebrow !text-[10px]">Policies accepted</dt><dd className="mt-1 font-medium">{p.acceptedVersion ? `v${p.acceptedVersion} · ${dateTime(p.acceptedAt)}` : 'Workspace created by Techmunda'}{p.acceptedVersion && p.acceptedVersion !== p.policyVersionCurrent && <Pill tone="gold" className="ml-2">update available</Pill>}</dd></div>
+            <div><dt className="eyebrow !text-[10px]">Verified</dt><dd className="mt-1 flex gap-1.5">{p.emailVerified && <Pill tone="green">E-mail</Pill>}{p.phoneVerified && <Pill tone="green">Mobile</Pill>}{!p.emailVerified && !p.phoneVerified && <span className="text-ink-muted">—</span>}</dd></div>
+            <div><dt className="eyebrow !text-[10px]">Data retention</dt><dd className="mt-1 font-medium">{p.isDemo ? `Auto-deleted ${dateTime(p.demoExpiresAt)}` : 'Managed by Techmunda agreement'}</dd></div>
+          </dl>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild><Link href="/legal/terms" target="_blank"><FileText className="h-4 w-4" />Terms of Demo Use</Link></Button>
+            <Button variant="outline" size="sm" asChild><Link href="/legal/privacy" target="_blank"><FileText className="h-4 w-4" />Privacy Policy</Link></Button>
+            <Button variant="gold" size="sm" loading={exp.isPending} onClick={() => exp.mutate()}><Download className="h-4 w-4" />Download my data</Button>
+            {p.canDeleteWorkspace && <Button variant="danger" size="sm" onClick={() => setDel(true)}><Trash2 className="h-4 w-4" />Delete workspace</Button>}
+          </div>
+          {!p.isDemo && <p className="text-xs text-ink-muted">To delete this workspace, e-mail techmunda21@gmail.com from the owner’s address.</p>}
+        </>)}
+      </div>
+      <Dialog open={del} onOpenChange={setDel}>
+        <DialogContent title="Delete this workspace?" description="This permanently deletes the workspace, every user, lead, product, image and PDF in it. It cannot be undone — download your data first.">
+          <label className="mb-1 block text-[13px] font-medium" htmlFor="del-pw">Your password</label>
+          <Input id="del-pw" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+          <label className="mb-1 mt-3 block text-[13px] font-medium" htmlFor="del-phrase">Type <strong>DELETE MY WORKSPACE</strong> to confirm</label>
+          <Input id="del-phrase" value={phrase} onChange={(e) => setPhrase(e.target.value)} />
+          <div className="mt-5 flex justify-end gap-2"><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button variant="danger" disabled={!pw || phrase !== 'DELETE MY WORKSPACE'} loading={remove.isPending} onClick={() => remove.mutate()}>Delete everything</Button></div>
+        </DialogContent>
+      </Dialog>
+    </Panel>
+  );
+}
 
 function Settings() {
   const { me, can } = useAuth();
@@ -78,6 +130,8 @@ function Settings() {
             <div className="flex justify-between"><dt className="text-ink-muted">Public enquiry page</dt><dd><a className="font-medium text-royal hover:underline" href={`/enquiry/${me?.tenant.slug}`} target="_blank" rel="noopener">/enquiry/{me?.tenant.slug}</a></dd></div></dl>
         </Panel>
       </div>
+
+      <PrivacyPanel />
 
       <Panel>
         <PanelHeader title="Team" description="Role-based access control" action={<Users className="h-5 w-5 text-gold-deep" aria-hidden />} />

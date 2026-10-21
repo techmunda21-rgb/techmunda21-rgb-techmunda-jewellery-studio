@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -95,10 +96,12 @@ export default function LoginPage() {
             <GoldDivider className="my-5" />
             <p className="text-center text-[13px] text-ink-muted">
               New to Techmunda?{' '}
+              <Link className="font-semibold text-royal hover:underline" href="/signup">Create a demo workspace</Link>
+              <span className="mx-1.5 text-gold">·</span>
               <a className="inline-flex items-center gap-1 font-semibold text-royal hover:underline" href="mailto:techmunda21@gmail.com?subject=Request%20a%20Demo"><Mail className="h-3.5 w-3.5" aria-hidden />Request a Demo</a>
             </p>
           </div>
-          <p className="mt-4 text-center text-[11px] text-ink-muted">Demo workspace · seeded with synthetic data</p>
+          <p className="mt-4 text-center text-[11px] text-ink-muted">Demo workspace · seeded with synthetic data · <Link className="underline" href="/legal/terms">Terms</Link> · <Link className="underline" href="/legal/privacy">Privacy</Link></p>
         </div>
       </section>
     </main>

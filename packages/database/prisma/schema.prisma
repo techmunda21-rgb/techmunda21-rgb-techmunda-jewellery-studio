@@ -111,10 +111,14 @@ model Tenant {
   currency  String       @default("INR")
   timezone  String       @default("Asia/Kolkata")
   status    RecordStatus @default(ACTIVE)
+  /// Self-service demo workspace (created via signup). Purged after demo_expires_at.
+  isDemo        Boolean      @default(false) @map("is_demo")
+  demoExpiresAt DateTime?    @map("demo_expires_at")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
   users        User[]
+  policyAcceptances PolicyAcceptance[]
   products     Product[]
   media        ProductMedia[]
   creativeJobs CreativeJob[]
@@ -143,6 +147,9 @@ model User {
   fullName     String       @map("full_name")
   email        String
   passwordHash String       @map("password_hash")
+  phone           String?
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
   role         Role
   status       RecordStatus @default(ACTIVE)
   createdAt    DateTime     @default(now()) @map("created_at")
@@ -150,6 +157,7 @@ model User {
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   refreshTokens RefreshToken[]
+  policyAcceptances PolicyAcceptance[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -597,4 +605,56 @@ model ShowcaseDocument {
 
   @@index([tenantId, isActive, createdAt])
   @@map("showcase_documents")
+}
+
+enum SignupStatus {
+  PENDING
+  VERIFIED
+  LOCKED
+  EXPIRED
+}
+
+/// Self-service signup awaiting OTP verification. Holds only a bcrypt password hash and an HMAC of the OTP (never the code).
+model SignupRequest {
+  id             String       @id @default(uuid()) @db.Uuid
+  email          String
+  phone          String
+  fullName       String       @map("full_name")
+  businessName   String       @map("business_name")
+  country        String       @default("IN")
+  passwordHash   String       @map("password_hash")
+  channel        String       // EMAIL | SMS — the channel that is verified
+  otpHash        String       @map("otp_hash")
+  otpExpiresAt   DateTime     @map("otp_expires_at")
+  attempts       Int          @default(0)
+  resendCount    Int          @default(0) @map("resend_count")
+  lastSentAt     DateTime     @map("last_sent_at")
+  status         SignupStatus @default(PENDING)
+  policyVersion  String       @map("policy_version")
+  marketingOptIn Boolean      @default(false) @map("marketing_opt_in")
+  ipHash         String       @map("ip_hash")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([email, createdAt])
+  @@index([ipHash, createdAt])
+  @@map("signup_requests")
+}
+
+/// Evidence of what each user accepted and when (terms + privacy policy versions).
+model PolicyAcceptance {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  policyVersion  String   @map("policy_version")
+  termsAccepted  Boolean  @map("terms_accepted")
+  privacyAccepted Boolean @map("privacy_accepted")
+  marketingOptIn Boolean  @default(false) @map("marketing_opt_in")
+  ipHash         String?  @map("ip_hash")
+  acceptedAt     DateTime @default(now()) @map("accepted_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@map("policy_acceptances")
 }

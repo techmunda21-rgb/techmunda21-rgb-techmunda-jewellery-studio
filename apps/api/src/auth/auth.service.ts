@@ -33,6 +33,12 @@ export class AuthService {
     return this.issueTokens(user.id, user.tenantId, user.role, randomUUID(), user);
   }
 
+  /** Starts a session for an already-authenticated user (e.g. right after OTP-verified signup). */
+  async startSession(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    return this.issueTokens(user.id, user.tenantId, user.role, randomUUID(), user);
+  }
+
   private async issueTokens(userId: string, tenantId: string, role: string, familyId: string, user: { id: string; email: string; fullName: string; role: string; tenantId: string }) {
     const accessToken = await this.jwt.signAsync({ sub: userId, tid: tenantId, role });
     const refreshToken = randomBytes(48).toString('base64url');

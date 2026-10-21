@@ -46,6 +46,21 @@ const schema = z.object({
   TURNSTILE_SECRET: z.string().optional(),
   QUEUE_MODE: z.enum(['redis', 'inline']).default('redis'),
   LOG_LEVEL: z.string().default('info'),
+
+  /** Self-service signup. Needs at least one OTP delivery channel below, otherwise signup reports itself unavailable. */
+  SIGNUP_ENABLED: z.string().optional().transform((v) => v !== 'false'),
+  DEMO_RETENTION_DAYS: z.coerce.number().default(30),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM: z.string().optional(),
+  TWILIO_MESSAGING_SERVICE_SID: z.string().optional(),
+  /** DEV ONLY: print OTPs to the server log instead of sending them. Refused on hosted platforms and in production. */
+  ALLOW_INSECURE_OTP_CONSOLE: bool,
 });
 
 export type Env = z.infer<typeof schema>;

@@ -20,4 +20,16 @@
 | Audit | `audit_logs` for login, approvals, sends, exports, uploads, integration changes; `activity_logs` for the CRM timeline |
 | Messaging rules | Consent `GRANTED` required to draft *and re-checked at send*; withdrawal cancels open drafts and blocks sends; opt-out line is appended to AI drafts; imported contacts have no consent; 200/day/tenant send cap; recipient must still equal the contact's email |
 
+## Self-service signup & privacy controls
+| Control | Implementation |
+|---|---|
+| Identity proof | One-time code to e-mail (SMTP) or SMS (Twilio); 6 digits from `crypto.randomInt`; 10-min expiry; stored only as HMAC(server secret, requestId+code); constant-time compare; 5 attempts then lock; 60-s resend cooldown, max 3 resends; nothing is created until verified; code never returned or logged (dev-only console mode is refused in production/Render) |
+| Abuse | 5 signup starts/h per hashed IP, 3/h per e-mail, route throttles, honeypot, strong-password rule (10+ chars, letter+digit), bcrypt cost 12; password hash cleared from the request row after verification |
+| Honesty | If no delivery channel is configured the API answers 503 `SIGNUP_UNAVAILABLE` and the UI says so — no fake or bypass code path |
+| Consent | Explicit unticked Terms + Privacy boxes (server rejects otherwise), optional separate marketing box (default off); each acceptance stored with policy version, time and hashed IP (`policy_acceptances`) |
+| Data minimisation | IPs stored only as keyed hashes; passwords as hashes; no card/ID/health data requested |
+| Retention | Demo tenants get `demo_expires_at` (30 d); `RetentionService` purges expired tenants + files and stale signup requests every 6 h |
+| User rights | Owner can download all workspace data as JSON and delete a demo workspace (password + typed confirmation); policy page documents the rest |
+| Known trade-offs | Signup reveals whether an e-mail/mobile is already registered (409) to give honest feedback — mitigated by rate limits and OTP; phone numbers are stored in clear text (needed for lookup); backups on the host may outlive deletion for the provider's retention period |
+
 **Known gaps / production hardening:** see [DEPLOYMENT.md](DEPLOYMENT.md#production-hardening-backlog).

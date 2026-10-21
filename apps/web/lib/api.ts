@@ -163,3 +163,14 @@ export async function uploadShowcasePdf(file: File, title: string, onProgress?: 
     throw e;
   }
 }
+
+/** Authenticated download of a JSON/blob endpoint (used for the data export). */
+export async function downloadFile(path: string, filename: string) {
+  const s = loadSession();
+  const res = await fetch(`${API_URL}${path}`, { headers: s ? { Authorization: `Bearer ${s.accessToken}` } : {} });
+  if (!res.ok) { const d = await res.json().catch(() => null); throw new ApiError(res.status, d?.error?.code ?? 'ERROR', d?.error?.message ?? `Download failed (${res.status})`); }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

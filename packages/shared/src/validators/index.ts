@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { POLICY_VERSION } from '../constants';
 import { purityError } from '../jewellery';
 import { ALLOWED_IMAGE_MIME, ASPECT_RATIOS, CREATIVE_STYLES, LEAD_STAGES, MAX_UPLOAD_BYTES } from '../constants';
 
@@ -191,3 +192,30 @@ export const paginationSchema = z.object({
 
 export type ProductInput = z.infer<typeof productInputSchema>;
 export type PublicLeadInput = z.infer<typeof publicLeadSchema>;
+
+/* ───────── self-service signup (demo workspace) ───────── */
+const strongPassword = z
+  .string()
+  .min(10, 'Use at least 10 characters')
+  .max(128)
+  .refine((v) => /[A-Za-z]/.test(v) && /\d/.test(v), 'Include at least one letter and one number');
+
+export const signupStartSchema = z.object({
+  fullName: z.string().trim().min(2).max(120),
+  businessName: z.string().trim().min(2).max(120),
+  email: z.string().email().max(254).transform((v) => v.toLowerCase().trim()),
+  /** International format, e.g. +919876543210 */
+  phone: z.string().trim().regex(/^\+[1-9]\d{7,14}$/, 'Enter the mobile number in international format, e.g. +919876543210'),
+  country: z.enum(['IN', 'AE', 'OTHER']).default('IN'),
+  password: strongPassword,
+  /** which channel receives the one-time code */
+  channel: z.enum(['EMAIL', 'SMS']),
+  acceptTerms: z.literal(true, { errorMap: () => ({ message: 'You must accept the Terms of Demo Use' }) }),
+  acceptPrivacy: z.literal(true, { errorMap: () => ({ message: 'You must accept the Privacy Policy' }) }),
+  marketingOptIn: z.boolean().default(false),
+  policyVersion: z.literal(POLICY_VERSION, { errorMap: () => ({ message: 'The policies were updated. Reload the page and review them again.' }) }),
+  website: z.string().max(500).optional(), // honeypot
+});
+export const signupVerifySchema = z.object({ requestId: z.string().uuid(), code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code') });
+export const signupResendSchema = z.object({ requestId: z.string().uuid() });
+export const accountDeleteSchema = z.object({ password: z.string().min(1).max(200), confirm: z.literal('DELETE MY WORKSPACE') });

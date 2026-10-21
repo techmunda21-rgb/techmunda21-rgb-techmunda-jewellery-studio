@@ -77,6 +77,9 @@ Royal red `#780514` (actions) · antique gold `#B88A36` (icons/borders) · warm 
 * **Accuracy rule:** purity and grams are **entered facts** (hallmark + weighing record), never read from a photo. Pure-metal grams = gross weight × fineness ÷ 1000 (stone weight is not deducted, so it is an upper bound).
 * **360° view:** Product → *360° view* → upload an ordered turntable set (24–36 photos, e.g. every 10°; files named `01…36`). The viewer (drag/swipe, arrow keys, slider, auto-rotate) shows only those real frames — it never invents angles. No 360° set is bundled in the demo data because none exists; AI-generated rotations would not be accurate to the real piece.
 
+## Self-service signup (OTP-verified demo workspaces)
+`/signup` lets a prospect create their own demo workspace after accepting the **Terms of Demo Use** and **Privacy Policy** (`/legal/terms`, `/legal/privacy`) and verifying a one-time code sent to their **e-mail** (SMTP, e.g. a Gmail app password) or **mobile** (Twilio SMS). Their data is stored in Postgres, isolated per workspace, auto-deleted after 30 days, and they can export or delete it themselves in *Settings → Privacy & data*. **Delivery needs credentials you provide** (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#signup-otp-delivery-e-mail-andor-mobile)); without them signup reports itself unavailable instead of faking codes. Locally, `ALLOW_INSECURE_OTP_CONSOLE=true` prints codes in the API log (refused in production).
+
 ## Dashboard showcase (design PDF)
 The Overview page has a **Showcase** panel: *Import design PDF* (owner/manager/designer) embeds a lookbook or price-catalogue PDF for client presentations (25 MB, 200 pages; scripts/launch actions/embedded files are rejected; the newest upload is shown, older ones can be re-activated or deleted). It displays the PDF — it does not extract products from it; use the CSV for that.
 

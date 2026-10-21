@@ -20,3 +20,6 @@ Public customer page for the "enquiry" step: `/enquiry/suvarna-heritage` (no log
 * The first request after ~15 minutes idle takes about a minute (service waking up).
 * Files are stored on the server's temporary disk. When the service restarts, the demo data **and anything uploaded during the demo (PDFs, photos, 360° frames, leads) is recreated from the seed** — so do client-specific uploads right before the meeting, or attach an S3 bucket / paid disk to keep them.
 * Gmail sending stays blocked until you connect Google (see `docs/DEPLOYMENT.md`). Anyone with an Owner/Manager/Sales login could then send email from that account, which is why the private `DEMO_PASSWORD` matters.
+
+## Letting prospects create their own demo
+Share `<web-url>/signup`. They accept the Terms and Privacy Policy, verify a code by e-mail or mobile, and get an empty workspace that is deleted automatically after 30 days. This only works after you configure SMTP and/or Twilio (see `docs/DEPLOYMENT.md`); until then the page shows "Signup is not available right now" with your contact e-mail.

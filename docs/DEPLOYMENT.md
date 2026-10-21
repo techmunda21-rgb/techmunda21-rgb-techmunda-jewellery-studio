@@ -18,6 +18,18 @@ Postgres 16, Redis 7, S3-compatible bucket (or a persistent volume for `STORAGE_
 5. For non-test users Google requires app verification for the restricted `gmail.compose` scope (security assessment) — plan for this before a client rollout.
 Until this is done the UI/API report *Gmail is not connected* and refuse to send. **This path has not been executed against real Google in the authoring environment.**
 
+## Signup OTP delivery (e-mail and/or mobile)
+Self-service signup (`/signup`) refuses to run unless a real delivery channel is configured.
+**E-mail via Gmail SMTP (≈5 min, you must do this):**
+1. Sign in to the Google account that will send the codes (e.g. `techmunda21@gmail.com`) → Security → turn on **2-Step Verification**.
+2. Security → **App passwords** → create one named "Techmunda" → copy the 16-character password.
+3. On Render → *techmunda-api* → Environment set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=techmunda21@gmail.com`, `SMTP_PASS=<app password>`, `SMTP_FROM=Techmunda <techmunda21@gmail.com>` → save (redeploys).
+(Gmail caps ~500 messages/day for normal accounts; use a transactional provider such as SES/Resend/Brevo SMTP for volume — same variables.)
+**Mobile SMS via Twilio:** set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM` or `TWILIO_MESSAGING_SERVICE_SID`. For Indian numbers you need a DLT-registered sender ID/template (TRAI rule), which Twilio/MSG91 onboarding walks you through; test numbers on a trial account must be verified in Twilio first.
+Never set `ALLOW_INSECURE_OTP_CONSOLE` on a hosted server (it is refused on Render/production anyway).
+**Retention:** the API deletes expired demo workspaces (default 30 days, `DEMO_RETENTION_DAYS`) every 6 hours and at start-up; unfinished signups after 7 days.
+**Legal text:** `/legal/terms` and `/legal/privacy` describe what the software does today. They are drafts written by the developer, **not legal advice** — have a lawyer review them (add governing law/jurisdiction, entity details, DPO/grievance officer if required under DPDP) before using signup with real clients, and bump `POLICY_VERSION` in `packages/shared/src/constants` whenever the text changes (users are then asked to accept again).
+
 ## OpenAI
 Set `OPENAI_API_KEY` (and optionally models). Text features switch from `SIMULATED_RULES` to the LLM; the Creative Studio switches from the demo adapter to `images.edit`. Image model/size parameters follow `gpt-image-1`; verify against your account's available models. **Not executed against the live API here.**
 

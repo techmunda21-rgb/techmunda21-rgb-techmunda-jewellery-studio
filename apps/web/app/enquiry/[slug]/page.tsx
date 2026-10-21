@@ -93,7 +93,7 @@ export default function EnquiryPage({ params }: { params: Promise<{ slug: string
                 </div>
                 <Button type="submit" size="lg" className="w-full sm:col-span-2" loading={isSubmitting} disabled={tenant.isLoading}>Submit Enquiry →</Button>
               </form>
-              <p className="mt-4 text-center text-[11px] text-ink-muted">Your details are used only to respond to this enquiry.</p>
+              <p className="mt-4 text-center text-[11px] text-ink-muted">Your details are used only to respond to this enquiry. <a className="underline" href="/legal/privacy#customer-enquiries" target="_blank" rel="noopener">Privacy notice</a></p>
             </div>
           )}
         </div>

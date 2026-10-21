@@ -48,3 +48,8 @@ export const LEAD_SCORE_WEIGHTS = {
 
 export const CONSENT_TEXT =
   'I agree to be contacted by this jewellery business about my enquiry by email, phone or WhatsApp. I can withdraw consent at any time.';
+
+/** Bump when the Terms or Privacy Policy text changes materially; acceptances are stored per version. */
+export const POLICY_VERSION = '2026-10-21';
+export const DEMO_RETENTION_DAYS = 30;
+export const SUPPORT_EMAIL = 'techmunda21@gmail.com';

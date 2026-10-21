@@ -8,5 +8,6 @@ import { AuthService } from './auth.service';
   imports: [JwtModule.registerAsync({ global: true, useFactory: () => ({ secret: loadEnv().JWT_ACCESS_SECRET, signOptions: { expiresIn: loadEnv().ACCESS_TOKEN_TTL as any } }) })],
   controllers: [AuthController],
   providers: [AuthService],
+  exports: [AuthService],
 })
 export class AuthModule {}

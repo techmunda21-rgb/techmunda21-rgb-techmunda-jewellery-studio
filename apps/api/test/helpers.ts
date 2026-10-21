@@ -9,6 +9,7 @@ import { prisma } from '@techmunda/database';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/setup';
 import { tenantWebhookSecret } from '../src/automation/automation.guard';
+import { OTP_DELIVERY, type OtpChannel, type OtpDelivery } from '../src/signup/otp-delivery';
 import { GMAIL_GATEWAY, GmailError, type GmailConnection, type GmailGateway } from '../src/integrations/gmail.gateway';
 
 export const PASSWORD = 'Test@12345';
@@ -46,9 +47,24 @@ export class FakeGmail implements GmailGateway {
   }
 }
 
+/** Captures one-time codes in memory (the real adapters send e-mail/SMS). */
+export class FakeOtp implements OtpDelivery {
+  available: OtpChannel[] = ['EMAIL', 'SMS'];
+  sent: Array<{ channel: OtpChannel; to: string; code: string }> = [];
+  failNext = false;
+  channels() { return this.available; }
+  async send(channel: OtpChannel, to: string, code: string) {
+    if (this.failNext) { this.failNext = false; throw new Error('provider down'); }
+    this.sent.push({ channel, to, code });
+  }
+  last() { return this.sent[this.sent.length - 1]; }
+  reset() { this.available = ['EMAIL', 'SMS']; this.sent = []; this.failNext = false; }
+}
+
 export async function createApp() {
   const gmail = new FakeGmail();
-  const mod = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(GMAIL_GATEWAY).useValue(gmail).compile();
+  const otp = new FakeOtp();
+  const mod = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(GMAIL_GATEWAY).useValue(gmail).overrideProvider(OTP_DELIVERY).useValue(otp).compile();
   const app = mod.createNestApplication({ bodyParser: false });
   configureApp(app);
   await app.init();
@@ -60,7 +76,7 @@ export async function createApp() {
     const wrap = (m: 'get' | 'post' | 'put' | 'patch' | 'delete') => (url: string) => (request(server) as any)[m](url).set('X-Forwarded-For', ipv());
     return { get: wrap('get'), post: wrap('post'), put: wrap('put'), patch: wrap('patch'), delete: wrap('delete') } as unknown as request.Agent;
   };
-  return { app, gmail, http };
+  return { app, gmail, otp, http };
 }
 
 export interface World {
@@ -70,7 +86,8 @@ export interface World {
 interface U { id: string; email: string }
 
 export async function resetWorld(): Promise<World> {
-  await prisma.tenant.deleteMany({ where: { slug: { in: ['test-a', 'test-b'] } } });
+  await prisma.tenant.deleteMany({ where: { OR: [{ slug: { in: ['test-a', 'test-b'] } }, { slug: { startsWith: 'signup-' } }] } });
+  await prisma.signupRequest.deleteMany({});
   const hash = await bcrypt.hash(PASSWORD, 4);
   const make = async (slug: string, name: string, users: Array<[string, any]>) => {
     const t = await prisma.tenant.create({ data: { name, slug } });

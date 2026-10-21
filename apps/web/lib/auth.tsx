@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, loadSession, login as apiLogin, logout as apiLogout, onSessionChange } from './api';
+import { api, loadSession, saveSession, login as apiLogin, logout as apiLogout, onSessionChange } from './api';
 
 export interface Me {
   user: { id: string; email: string; fullName: string; role: string; tenantId: string };
@@ -13,6 +13,7 @@ interface AuthCtx {
   loading: boolean;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
+  adoptSession(tokens: { accessToken: string; refreshToken: string }): Promise<void>;
   can(...roles: string[]): boolean;
 }
 const Ctx = createContext<AuthCtx | null>(null);
@@ -51,6 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signIn(email, password) {
         qc.clear();
         await apiLogin(email, password);
+        await fetchMe();
+      },
+      async adoptSession(tokens) {
+        qc.clear();
+        saveSession(tokens);
         await fetchMe();
       },
       async signOut() {
