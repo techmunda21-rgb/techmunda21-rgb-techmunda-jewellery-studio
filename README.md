@@ -71,6 +71,12 @@ Royal red `#780514` (actions) · antique gold `#B88A36` (icons/borders) · warm 
 | Login 429 | Login is limited to 10/min/IP. |
 | "Sending is blocked: Gmail is not connected" | Expected until Google OAuth is configured — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#gmail-oauth). |
 
+## Price catalogue PDF, CSV import and 360° view
+* **PDF + CSV:** `pnpm --filter @techmunda/database exec tsx ../../infrastructure/scripts/build-catalogue.ts <tenant-slug>` writes `docs/catalogue/<slug>-catalogue.pdf` (cover, index, one designed page per piece with price, hallmark purity/fineness, gross weight, pure-metal content, weight-structure bar) and a matching CSV. A sample for the demo tenant is committed.
+* **Import into the software:** Products → *Import CSV* (template download included). Rows are validated before saving — gold purity must be a real standard (24K/999, 22K/916, 21K/875, 18K/750, 14K/585, 9K/375), weights > 0, duplicate SKUs flagged; existing SKUs are only overwritten if you tick the box. Importing the *PDF itself* is not supported (PDF text is not a reliable data source); use the CSV that is generated with it.
+* **Accuracy rule:** purity and grams are **entered facts** (hallmark + weighing record), never read from a photo. Pure-metal grams = gross weight × fineness ÷ 1000 (stone weight is not deducted, so it is an upper bound).
+* **360° view:** Product → *360° view* → upload an ordered turntable set (24–36 photos, e.g. every 10°; files named `01…36`). The viewer (drag/swipe, arrow keys, slider, auto-rotate) shows only those real frames — it never invents angles. No 360° set is bundled in the demo data because none exists; AI-generated rotations would not be accurate to the real piece.
+
 ## Email design
 Approved plain text is rendered into a branded, responsive HTML email (maroon/gold header, serif greeting and signature, opt-out footer) and sent as `multipart/alternative`. Content is HTML-escaped, no links or tracking pixels are added, and the Approvals screen shows the exact preview. Source: `packages/shared/src/email.ts`.
 

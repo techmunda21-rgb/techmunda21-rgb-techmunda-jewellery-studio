@@ -52,7 +52,7 @@ function Studio() {
 
   const products = useQuery({ queryKey: ['products', 'all'], queryFn: () => api<any>('/products', { query: { pageSize: 100 } }) });
   const product = useQuery({ queryKey: ['product', productId], queryFn: () => api<any>(`/products/${productId}`), enabled: !!productId });
-  const originals: any[] = product.data?.media?.filter((m: any) => m.isOriginal) ?? [];
+  const originals: any[] = product.data?.media?.filter((m: any) => m.isOriginal && m.mediaKind === 'PHOTO') ?? [];
   useEffect(() => { if (originals.length && !originals.some((m) => m.id === mediaId)) setMediaId(originals[originals.length - 1].id); if (!originals.length) setMediaId(''); }, [productId, originals.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const job = useQuery({

@@ -16,6 +16,8 @@ interface UploadToken {
   key: string;
   mimeType: string;
   fileSize: number;
+  kind: string;
+  sortOrder: number;
 }
 
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -37,10 +39,10 @@ export class MediaService {
     private readonly audit: AuditService,
   ) {}
 
-  async createUploadUrl(user: AuthUser, input: { productId: string; fileName: string; mimeType: string; fileSize: number }) {
+  async createUploadUrl(user: AuthUser, input: { productId: string; fileName: string; mimeType: string; fileSize: number; kind?: string; sortOrder?: number }) {
     found(await this.prisma.product.findFirst({ where: { id: input.productId, tenantId: user.tenantId }, select: { id: true } }), 'Product');
     const key = `${user.tenantId}/originals/${randomUUID()}.${EXT[input.mimeType]}`;
-    const token = signPayload({ tenantId: user.tenantId, userId: user.id, productId: input.productId, key, mimeType: input.mimeType, fileSize: input.fileSize } satisfies Omit<UploadToken, never>, this.env.URL_SIGNING_SECRET, 900);
+    const token = signPayload({ tenantId: user.tenantId, userId: user.id, productId: input.productId, key, mimeType: input.mimeType, fileSize: input.fileSize, kind: input.kind ?? 'PHOTO', sortOrder: input.sortOrder ?? 0 } satisfies Omit<UploadToken, never>, this.env.URL_SIGNING_SECRET, 900);
     const presigned = await this.storage.presignPut(key, input.mimeType, 900);
     return {
       uploadUrl: presigned ?? `${this.env.API_PUBLIC_URL}/api/v1/media/upload/${token}`,
@@ -95,7 +97,7 @@ export class MediaService {
       const row = await this.prisma.productMedia.create({
         data: {
           tenantId: user.tenantId, productId: t.productId, storageKey: t.key, mimeType: realMime, fileSize: buf.length, checksum: sha256(buf),
-          width: meta.width, height: meta.height, mediaType: 'ORIGINAL', isOriginal: true, rightsConfirmed: true, reviewStatus: 'APPROVED', uploadedBy: user.id,
+          width: meta.width, height: meta.height, mediaType: 'ORIGINAL', isOriginal: true, rightsConfirmed: true, mediaKind: t.kind ?? 'PHOTO', sortOrder: t.sortOrder ?? 0, reviewStatus: 'APPROVED', uploadedBy: user.id,
         },
       });
       await this.audit.audit({ tenantId: user.tenantId, actorId: user.id, action: 'media.uploaded', resourceType: 'product_media', resourceId: row.id, metadata: { productId: t.productId, rightsConfirmed: true } });
@@ -106,12 +108,20 @@ export class MediaService {
     }
   }
 
+  async remove(user: AuthUser, id: string) {
+    const m = found(await this.prisma.productMedia.findFirst({ where: { id, tenantId: user.tenantId }, include: { jobs: { select: { id: true }, take: 1 } } }), 'Media');
+    if (m.jobs.length) throw new ConflictException({ code: 'MEDIA_IN_USE', message: 'This image is the source of a creative job and cannot be deleted' });
+    await this.prisma.productMedia.delete({ where: { id } });
+    await this.storage.remove(m.storageKey).catch(() => undefined);
+    await this.audit.audit({ tenantId: user.tenantId, actorId: user.id, action: 'media.deleted', resourceType: 'product_media', resourceId: id, metadata: { kind: m.mediaKind } });
+  }
+
   async get(user: AuthUser, id: string) {
     return this.view(user.tenantId, found(await this.prisma.productMedia.findFirst({ where: { id, tenantId: user.tenantId } }), 'Media'));
   }
 
-  private async view(tenantId: string, m: { id: string; productId: string; storageKey: string; mimeType: string; fileSize: number; width: number | null; height: number | null; checksum: string; isOriginal: boolean; rightsConfirmed: boolean; createdAt: Date }) {
-    return { id: m.id, productId: m.productId, mimeType: m.mimeType, fileSize: m.fileSize, width: m.width, height: m.height, checksum: m.checksum, isOriginal: m.isOriginal, rightsConfirmed: m.rightsConfirmed, createdAt: m.createdAt, url: await this.urls.viewUrl(tenantId, m.storageKey, m.mimeType) };
+  private async view(tenantId: string, m: { id: string; productId: string; storageKey: string; mimeType: string; fileSize: number; width: number | null; height: number | null; checksum: string; mediaKind: string; sortOrder: number; isOriginal: boolean; rightsConfirmed: boolean; createdAt: Date }) {
+    return { id: m.id, productId: m.productId, mimeType: m.mimeType, fileSize: m.fileSize, width: m.width, height: m.height, checksum: m.checksum, mediaKind: m.mediaKind, sortOrder: m.sortOrder, isOriginal: m.isOriginal, rightsConfirmed: m.rightsConfirmed, createdAt: m.createdAt, url: await this.urls.viewUrl(tenantId, m.storageKey, m.mimeType) };
   }
 
   /** Serves a signed local file. nosniff + forced image types so uploads can never execute as HTML. */

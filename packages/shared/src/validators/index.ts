@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { purityError } from '../jewellery';
 import { ALLOWED_IMAGE_MIME, ASPECT_RATIOS, CREATIVE_STYLES, LEAD_STAGES, MAX_UPLOAD_BYTES } from '../constants';
 
 const money = z.coerce.number().nonnegative().finite();
@@ -10,7 +11,7 @@ export const loginSchema = z.object({
 });
 export const refreshSchema = z.object({ refreshToken: z.string().min(20).max(500) });
 
-export const productInputSchema = z.object({
+const productBase = z.object({
   sku: z.string().trim().min(2).max(64),
   name: z.string().trim().min(2).max(160),
   category: z.string().trim().min(2).max(80),
@@ -18,18 +19,31 @@ export const productInputSchema = z.object({
   metalType: z.string().trim().max(60).nullish(),
   purity: z.string().trim().max(40).nullish(),
   stoneType: z.string().trim().max(80).nullish(),
-  weight: money.nullish(),
+  weight: money.refine((n) => n > 0, 'Weight must be greater than 0').nullish(),
   price: money.nullish(),
   currency: z.string().length(3).default('INR'),
   availability: z.enum(['IN_STOCK', 'MADE_TO_ORDER', 'OUT_OF_STOCK']).default('IN_STOCK'),
 });
-export const productUpdateSchema = productInputSchema.partial();
+export const productFieldsSchema = productBase;
+export const productInputSchema = productBase.superRefine((v, ctx) => {
+  const e = purityError(v.metalType, v.purity);
+  if (e) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['purity'], message: e });
+});
+export const productUpdateSchema = productBase.partial().superRefine((v, ctx) => {
+  if (v.metalType !== undefined || v.purity !== undefined) {
+    const e = purityError(v.metalType, v.purity);
+    if (e) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['purity'], message: e });
+  }
+});
 
 export const uploadUrlSchema = z.object({
   productId: z.string().uuid(),
   fileName: z.string().trim().min(1).max(200),
   mimeType: z.enum(ALLOWED_IMAGE_MIME),
   fileSize: z.number().int().positive().max(MAX_UPLOAD_BYTES, 'File exceeds the 10 MB limit'),
+  /** PHOTO = catalogue image; SPIN_FRAME = one frame of a 360° turntable set, ordered by sortOrder. */
+  kind: z.enum(['PHOTO', 'SPIN_FRAME']).default('PHOTO'),
+  sortOrder: z.number().int().min(0).max(359).default(0),
   rightsConfirmed: z.literal(true, { errorMap: () => ({ message: 'You must confirm the image is client-authorised' }) }),
 });
 export const confirmUploadSchema = z.object({ uploadToken: z.string().min(10).max(2000) });
@@ -166,6 +180,8 @@ export const qualificationOutputSchema = z.object({
   requires_human_review: z.boolean(),
 });
 export type QualificationOutput = z.infer<typeof qualificationOutputSchema>;
+
+export const productImportCommitSchema = z.object({ rows: z.array(productBase.extend({ currency: z.string().length(3).default('INR') })).min(1).max(500), updateExisting: z.boolean().default(false) });
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

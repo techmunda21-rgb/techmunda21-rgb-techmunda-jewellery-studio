@@ -70,7 +70,7 @@ async function main() {
   // products + synthetic images
   const products: Record<string, { id: string; mediaId: string }> = {};
   for (const p of PRODUCTS) {
-    const prod = await prisma.product.create({ data: { tenantId: t.id, sku: p.sku, name: p.name, category: p.category, description: `${p.name} — catalogue entry (demo data).`, metalType: p.metalType, purity: p.purity, stoneType: p.stoneType, weight: p.weight, price: p.price, availability: p.availability as any } });
+    const prod = await prisma.product.create({ data: { tenantId: t.id, sku: p.sku, name: p.name, category: p.category, description: null, metalType: p.metalType, purity: p.purity, stoneType: p.stoneType, weight: p.weight, price: p.price, availability: p.availability as any } });
     const png = await sharp(path.join(__dirname, 'seed-assets', `${p.photo}.jpg`)).rotate().jpeg({ quality: 90 }).toBuffer();
     const meta = await sharp(png).metadata();
     const key = `${t.id}/originals/${randomUUID()}.jpg`;

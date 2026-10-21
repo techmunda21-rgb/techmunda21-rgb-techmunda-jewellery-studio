@@ -23,4 +23,6 @@
 | Gmail draft & send | Google OAuth connected | Blocked with explanation; **no fake success** |
 | Everything else | always | — |
 
+Catalogue add-on (2 min): open `docs/catalogue/suvarna-heritage-catalogue.pdf`, then Products → Import CSV with the matching CSV into a fresh workspace, open a product to show purity/fineness/pure-gold grams, and the 360° tab (upload turntable frames to enable it).
+
 Reset between demos: `pnpm db:seed`.

@@ -112,10 +112,10 @@ export async function logout() {
 }
 
 /** 3-step signed upload: request URL → PUT bytes (with progress) → confirm (server validates the image). */
-export async function uploadProductImage(productId: string, file: File, onProgress?: (pct: number) => void) {
+export async function uploadProductImage(productId: string, file: File, onProgress?: (pct: number) => void, opts: { kind?: 'PHOTO' | 'SPIN_FRAME'; sortOrder?: number } = {}) {
   const up = await api<{ uploadUrl: string; uploadToken: string; headers: Record<string, string> }>('/media/upload-url', {
     method: 'POST',
-    body: { productId, fileName: file.name, mimeType: file.type, fileSize: file.size, rightsConfirmed: true },
+    body: { productId, fileName: file.name, mimeType: file.type, fileSize: file.size, rightsConfirmed: true, kind: opts.kind ?? 'PHOTO', sortOrder: opts.sortOrder ?? 0 },
   });
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();

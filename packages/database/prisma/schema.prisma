@@ -212,6 +212,9 @@ model ProductMedia {
   mediaType       MediaType    @default(ORIGINAL) @map("media_type")
   isOriginal      Boolean      @default(true) @map("is_original")
   rightsConfirmed Boolean      @default(false) @map("rights_confirmed")
+  /// PHOTO (catalogue image) or SPIN_FRAME (one frame of a 360° turntable set, ordered by sort_order)
+  mediaKind       String       @default("PHOTO") @map("media_kind")
+  sortOrder       Int          @default(0) @map("sort_order")
   width           Int?
   height          Int?
   reviewStatus    ReviewStatus @default(APPROVED) @map("review_status")

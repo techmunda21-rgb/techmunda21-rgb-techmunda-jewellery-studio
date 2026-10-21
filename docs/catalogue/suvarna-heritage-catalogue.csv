@@ -1,0 +1,7 @@
+sku,name,category,metal,purity,stones,weight_g,price,currency,availability,description
+BG-005,Temple Gold Bangles,Bangles,Gold,22K,Ruby,64,312000,INR,MADE_TO_ORDER,
+ST-006,Bridal Gold Set,Bridal Set,Gold,22K,"Ruby, Emerald, Diamond",142,675000,INR,MADE_TO_ORDER,
+ER-004,Diamond Jhumka Earrings,Earrings,Gold,18K,"Diamond, Pearl",21.2,168000,INR,IN_STOCK,
+NK-001,Emerald Heritage Necklace,Necklace,Gold,22K,"Emerald, Diamond",78.5,485000,INR,IN_STOCK,
+PD-009,Floral Pendant,Pendant,Gold,18K,Diamond,6.4,58000,INR,IN_STOCK,
+RG-012,Solitaire Diamond Ring,Ring,Gold,18K,Diamond,5.8,235000,INR,IN_STOCK,
