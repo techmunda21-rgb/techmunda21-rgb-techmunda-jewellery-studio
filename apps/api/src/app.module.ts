@@ -21,6 +21,7 @@ import { LeadsModule } from './leads/leads.module';
 import { MediaModule } from './media/media.module';
 import { OpportunitiesModule } from './opportunities/opportunities.module';
 import { ProductsModule } from './products/products.module';
+import { ShowcaseModule } from './showcase/showcase.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsersModule } from './users/users.module';
 
@@ -37,7 +38,7 @@ import { UsersModule } from './users/users.module';
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: process.env.NODE_ENV === 'test' ? 10_000 : 240 }]),
     CoreModule, AuthModule, UsersModule, TenantsModule, ProductsModule, MediaModule, AiModule, CreativesModule, CampaignsModule,
-    LeadsModule, ContactsModule, OpportunitiesModule, CommunicationsModule, ApprovalsModule, IntegrationsModule, AnalyticsModule, AuditModule, AutomationModule,
+    LeadsModule, ContactsModule, OpportunitiesModule, CommunicationsModule, ApprovalsModule, IntegrationsModule, AnalyticsModule, AuditModule, AutomationModule, ShowcaseModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

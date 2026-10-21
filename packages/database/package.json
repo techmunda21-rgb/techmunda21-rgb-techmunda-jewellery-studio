@@ -22,6 +22,7 @@
     "@techmunda/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.8",
+    "pdf-lib": "^1.17.1",
     "sharp": "^0.34.0"
   },
   "devDependencies": {

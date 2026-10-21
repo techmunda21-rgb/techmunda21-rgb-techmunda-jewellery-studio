@@ -34,7 +34,7 @@ Production-style local run: `pnpm build && infrastructure/scripts/run-local.sh s
 ### Docker
 `docker compose up --build` (a `render.yaml` blueprint is also included — untested) (Postgres, Redis, MinIO, migrate, api, worker, web). `docker compose --profile automation up n8n` adds n8n. *The compose/Dockerfile were written but could not be built in the authoring sandbox (no Docker daemon).*
 
-### Demo logins (password `Demo@12345`)
+### Demo logins (password `Demo@12345`, or `DEMO_PASSWORD` if set — see [docs/DEMO-ACCESS.md](docs/DEMO-ACCESS.md))
 | Email | Role |
 |---|---|
 | owner@suvarna.demo | Tenant owner (Aarav Sharma) |
@@ -76,6 +76,9 @@ Royal red `#780514` (actions) · antique gold `#B88A36` (icons/borders) · warm 
 * **Import into the software:** Products → *Import CSV* (template download included). Rows are validated before saving — gold purity must be a real standard (24K/999, 22K/916, 21K/875, 18K/750, 14K/585, 9K/375), weights > 0, duplicate SKUs flagged; existing SKUs are only overwritten if you tick the box. Importing the *PDF itself* is not supported (PDF text is not a reliable data source); use the CSV that is generated with it.
 * **Accuracy rule:** purity and grams are **entered facts** (hallmark + weighing record), never read from a photo. Pure-metal grams = gross weight × fineness ÷ 1000 (stone weight is not deducted, so it is an upper bound).
 * **360° view:** Product → *360° view* → upload an ordered turntable set (24–36 photos, e.g. every 10°; files named `01…36`). The viewer (drag/swipe, arrow keys, slider, auto-rotate) shows only those real frames — it never invents angles. No 360° set is bundled in the demo data because none exists; AI-generated rotations would not be accurate to the real piece.
+
+## Dashboard showcase (design PDF)
+The Overview page has a **Showcase** panel: *Import design PDF* (owner/manager/designer) embeds a lookbook or price-catalogue PDF for client presentations (25 MB, 200 pages; scripts/launch actions/embedded files are rejected; the newest upload is shown, older ones can be re-activated or deleted). It displays the PDF — it does not extract products from it; use the CSV for that.
 
 ## Email design
 Approved plain text is rendered into a branded, responsive HTML email (maroon/gold header, serif greeting and signature, opt-out footer) and sent as `multipart/alternative`. Content is HTML-escaped, no links or tracking pixels are added, and the Approvals screen shows the exact preview. Source: `packages/shared/src/email.ts`.

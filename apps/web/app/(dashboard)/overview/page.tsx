@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth';
 import { budgetRange, money, moneyCompact, timeAgo } from '@/lib/format';
 import { useAiStatus } from '@/hooks/queries';
 import { LEAD_STAGE_LABELS } from '@techmunda/shared';
+import { ShowcasePanel } from '@/components/features/showcase-panel';
 import { cn } from '@/lib/utils';
 
 const gold = 'rgb(var(--gold))';
@@ -62,6 +63,8 @@ export default function OverviewPage() {
         </div>
         {ai.data && <Pill tone={ai.data.text.mode === 'LIVE' ? 'green' : 'gold'}><Sparkles className="h-3 w-3" />AI: {ai.data.text.mode === 'LIVE' ? 'Live provider' : 'Demo simulation'}</Pill>}
       </div>
+
+      <ShowcasePanel />
 
       {(approvals.data?.data?.length ?? 0) > 0 && (
         <Banner tone="info" title={`${approvals.data.data.length} item${approvals.data.data.length > 1 ? 's' : ''} awaiting your review`}>

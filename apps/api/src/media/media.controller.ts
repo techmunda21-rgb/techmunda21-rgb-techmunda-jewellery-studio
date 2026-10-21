@@ -1,16 +1,17 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, Put, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { confirmUploadSchema, uploadUrlSchema } from '@techmunda/shared';
 import type { Request, Response } from 'express';
 import { CurrentUser, Doc, Public, Roles } from '../common/decorators';
 import type { AuthUser } from '../common/types';
 import { zod } from '../common/zod.pipe';
+import { ENV, type AppEnv } from '../common/tokens';
 import { MediaService } from './media.service';
 
 @ApiTags('Media')
 @Controller('media')
 export class MediaController {
-  constructor(private readonly media: MediaService) {}
+  constructor(private readonly media: MediaService, @Inject(ENV) private readonly env: AppEnv) {}
 
   @Post('upload-url')
   @Roles('PLATFORM_ADMIN', 'TENANT_OWNER', 'MANAGER', 'DESIGNER')
@@ -37,11 +38,17 @@ export class MediaController {
   @Get('file/:token')
   @Header('X-Content-Type-Options', 'nosniff')
   @Header('Cache-Control', 'private, max-age=600')
-  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
   @Header('Cross-Origin-Resource-Policy', 'cross-origin')
   async file(@Param('token') token: string, @Res() res: Response) {
     const f = await this.media.readSigned(token);
     res.setHeader('Content-Type', f.mimeType);
+    // images are sandboxed; PDFs cannot be (the browser PDF viewer needs to run) — uploads with active content are rejected instead
+    if (f.mimeType !== 'application/pdf') res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    else {
+      // the dashboard embeds the PDF: allow framing by our own web origin only
+      res.removeHeader('X-Frame-Options');
+      res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${this.env.WEB_PUBLIC_URL}`);
+    }
     res.setHeader('Content-Disposition', `${f.download ? 'attachment' : 'inline'}; filename="${f.name}"`);
     res.send(f.data);
   }

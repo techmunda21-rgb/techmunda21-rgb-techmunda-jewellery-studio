@@ -7,7 +7,9 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
+import fs from 'fs';
 import path from 'path';
+import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
 import { PrismaClient, type LeadStage } from '@prisma/client';
 import { buildCreativeBrief, createStorage, loadEnv, processCreativeJob, sha256, simulatedDraft } from '@techmunda/core';
@@ -43,7 +45,17 @@ async function needsSeed(): Promise<boolean> {
 }
 
 async function main() {
-  if (process.argv.includes('--if-needed') && !(await needsSeed())) { console.log('Demo data present — seed skipped.'); return; }
+  if (process.argv.includes('--if-needed') && !(await needsSeed())) {
+    // keep demo logins in sync with DEMO_PASSWORD (so the password can be changed in the host's env without wiping data)
+    const owner = await prisma.user.findFirst({ where: { email: 'owner@suvarna.demo' } });
+    if (owner && !(await bcrypt.compare(PASSWORD, owner.passwordHash))) {
+      const h = await bcrypt.hash(PASSWORD, 12);
+      const r = await prisma.user.updateMany({ where: { email: { endsWith: '.demo' } }, data: { passwordHash: h } });
+      await prisma.refreshToken.deleteMany({ where: { user: { email: { endsWith: '.demo' } } } });
+      console.log(`Demo password updated for ${r.count} users (existing sessions revoked).`);
+    } else console.log('Demo data present — seed skipped.');
+    return;
+  }
   await wipe();
   const hash = await bcrypt.hash(PASSWORD, 12);
 
@@ -158,7 +170,16 @@ async function main() {
   await prisma.approvalRequest.create({ data: { tenantId: t.id, resourceType: 'COMMUNICATION_DRAFT', resourceId: draft.id, requestedBy: sales1.id } });
   await prisma.activityLog.create({ data: { tenantId: t.id, actorId: sales1.id, entityType: 'communication_draft', entityId: draft.id, leadId: leadIds['Priya Mehta'], action: 'email.draft_created', metadata: { aiGenerated: true, aiSource: 'SIMULATED_RULES' } } });
 
-  void sales2; void manager; void jobIds;
+  // showcase: the sample price catalogue PDF (if present) so the dashboard has something to present
+  const pdfPath = path.resolve(__dirname, '../../docs/catalogue/suvarna-heritage-catalogue.pdf');
+  if (fs.existsSync(pdfPath)) {
+    const bytes = fs.readFileSync(pdfPath);
+    const key = `${t.id}/showcase/${randomUUID()}.pdf`;
+    await storage.put(key, bytes, 'application/pdf');
+    await prisma.showcaseDocument.create({ data: { tenantId: t.id, title: 'Suvarna Heritage — Price Catalogue', storageKey: key, fileSize: bytes.length, pageCount: (await PDFDocument.load(bytes)).getPageCount(), checksum: sha256(bytes), uploadedBy: manager.id } });
+  }
+
+  void sales2; void jobIds;
   console.log(`Seed complete.\n  Tenant: ${t.name} (slug: ${t.slug})\n  Login: owner@suvarna.demo / ${PASSWORD}  (also manager@, designer@, sales@, sales2@, viewer@suvarna.demo)\n  Second tenant: owner@alnoor.demo / ${PASSWORD}\n  Platform admin: admin@techmunda.demo / ${PASSWORD}\n  Public enquiry page: /enquiry/suvarna-heritage`);
 }
 

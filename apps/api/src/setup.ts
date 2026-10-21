@@ -13,6 +13,7 @@ export function configureApp(app: INestApplication, opts: { swagger?: boolean } 
   app.enableCors({ origin: env.CORS_ORIGINS.split(',').map((s) => s.trim()), credentials: false, allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'], methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
   // raw bytes for signed uploads (10 MB cap), JSON with rawBody retained for webhook HMAC verification
   app.use('/api/v1/media/upload', express.raw({ type: () => true, limit: '10mb' }));
+  app.use('/api/v1/showcase', express.raw({ type: 'application/pdf', limit: '25mb' }));
   app.use(express.json({ limit: '2mb', verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
   app.setGlobalPrefix('api/v1');
 

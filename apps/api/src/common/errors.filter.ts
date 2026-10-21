@@ -27,6 +27,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         details = r.details;
       }
       if (!code || code === 'INTERNAL_ERROR') code = statusCode(status);
+    } else if (typeof (exception as any)?.status === 'number' && (exception as any).status >= 400 && (exception as any).status < 500 && (exception as any).type) {
+      // body-parser errors (payload too large, malformed JSON, …)
+      status = (exception as any).status;
+      code = status === 413 ? 'PAYLOAD_TOO_LARGE' : 'BAD_REQUEST';
+      message = status === 413 ? 'Request body is too large' : 'Malformed request body';
     } else if (exception instanceof ProviderError) {
       status = exception.code === 'NOT_CONFIGURED' ? 503 : exception.code === 'RATE_LIMITED' ? 429 : 502;
       code = exception.code === 'NOT_CONFIGURED' ? 'AI_NOT_CONFIGURED' : 'AI_PROVIDER_ERROR';

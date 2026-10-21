@@ -132,6 +132,7 @@ model Tenant {
   notes        LeadNote[]
   tasks        Task[]
   notifications Notification[]
+  showcases    ShowcaseDocument[]
 
   @@map("tenants")
 }
@@ -577,4 +578,23 @@ model Notification {
 
   @@index([tenantId, userId, readAt])
   @@map("notifications")
+}
+
+/// A PDF (design lookbook / price catalogue) shown on the dashboard "Showcase" panel.
+model ShowcaseDocument {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  title      String
+  storageKey String   @map("storage_key")
+  fileSize   Int      @map("file_size")
+  pageCount  Int      @map("page_count")
+  checksum   String
+  isActive   Boolean  @default(true) @map("is_active")
+  uploadedBy String   @map("uploaded_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive, createdAt])
+  @@map("showcase_documents")
 }

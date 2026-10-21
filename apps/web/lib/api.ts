@@ -139,3 +139,27 @@ function parseXhrError(xhr: XMLHttpRequest) {
 }
 
 export const errorMessage = (e: unknown) => (e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Something went wrong');
+
+/** Uploads a PDF as the dashboard showcase (raw body, bearer-authenticated, with progress). */
+export async function uploadShowcasePdf(file: File, title: string, onProgress?: (pct: number) => void): Promise<any> {
+  const attempt = () => new Promise<any>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', `${API_URL}/showcase?title=${encodeURIComponent(title)}`);
+    xhr.setRequestHeader('Content-Type', 'application/pdf');
+    const s = loadSession();
+    if (s) xhr.setRequestHeader('Authorization', `Bearer ${s.accessToken}`);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      let data: any = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* not json */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new ApiError(xhr.status, data?.error?.code ?? 'UPLOAD_FAILED', data?.error?.message ?? `Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'NETWORK', 'Upload failed. Check your connection.'));
+    xhr.send(file);
+  });
+  try { return await attempt(); } catch (e) {
+    if (e instanceof ApiError && e.status === 401 && (await refresh())) return attempt();
+    throw e;
+  }
+}
