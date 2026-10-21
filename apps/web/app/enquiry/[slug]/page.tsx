@@ -46,15 +46,21 @@ export default function EnquiryPage({ params }: { params: Promise<{ slug: string
   const name = tenant.data?.name ?? 'our jewellers';
   return (
     <main id="main" className="grid min-h-screen bg-cream lg:grid-cols-[1fr_1.05fr]">
-      <section className="relative overflow-hidden bg-gradient-to-br from-maroon-deep via-maroon to-royal/85 px-6 py-10 text-maroon-foreground sm:px-10 lg:flex lg:flex-col lg:justify-center lg:px-14">
-        <Motif className="pointer-events-none absolute -right-28 -top-28 h-[420px] w-[420px] opacity-20" />
-        <div className="relative mx-auto w-full max-w-lg">
-          <div className="mb-6 flex items-center gap-2"><LogoMark className="h-8 w-8" /><span className="font-editorial text-xl tracking-wide">{tenant.isLoading ? '' : name}</span></div>
-          <h1 className="font-editorial text-[44px] font-semibold leading-[1.05] text-ivory sm:text-6xl">Find Your Perfect Jewellery</h1>
-          <p className="mt-4 text-lg text-maroon-foreground/85">Book a personalized consultation with our jewellery experts.</p>
-          <GoldDivider className="my-6 max-w-xs" />
-          <ul className="grid gap-3 sm:grid-cols-2">{BENEFITS.map(({ icon: I, label }) => <li key={label} className="flex items-center gap-3 text-sm"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-gold/70 bg-gold/10 text-gold"><I className="h-4 w-4" aria-hidden /></span>{label}</li>)}</ul>
-          <img src="/images/hero-bridal.jpg" alt="Bridal gold choker necklace and earrings" className="mt-8 hidden aspect-[16/8] w-full rounded-2xl border border-gold/60 object-cover shadow-lift lg:block" />
+      <section className="relative min-h-[420px] overflow-hidden bg-maroon-deep text-maroon-foreground lg:min-h-screen">
+        <div className="absolute inset-x-0 top-0 h-[58%]">
+          <img src="/images/model-modern.jpg" alt="Model wearing an emerald and diamond necklace and earrings" className="h-full w-full object-cover object-[50%_45%]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-maroon-deep via-maroon-deep/10 to-transparent" aria-hidden />
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-maroon-deep/80 to-transparent" aria-hidden />
+        </div>
+        <Motif className="pointer-events-none absolute -right-28 -top-28 h-[360px] w-[360px] opacity-20" />
+        <div className="relative z-10 flex min-h-[420px] flex-col justify-between px-6 py-8 sm:px-10 lg:min-h-screen lg:px-14 lg:py-10">
+          <div className="flex items-center gap-2"><LogoMark className="h-8 w-8" /><span className="font-editorial text-xl tracking-wide">{tenant.isLoading ? '' : name}</span></div>
+          <div className="max-w-lg pt-52 lg:pt-0">
+            <h1 className="font-editorial text-[42px] font-semibold leading-[1.05] text-ivory sm:text-6xl">Find Your Perfect Jewellery</h1>
+            <p className="mt-4 text-lg text-maroon-foreground/90">Book a personalized consultation with our jewellery experts.</p>
+            <GoldDivider className="my-6 max-w-xs" />
+            <ul className="grid gap-3 sm:grid-cols-2">{BENEFITS.map(({ icon: I, label }) => <li key={label} className="flex items-center gap-3 text-sm"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/70 bg-maroon-deep/60 text-gold"><I className="h-4 w-4" aria-hidden /></span>{label}</li>)}</ul>
+          </div>
         </div>
       </section>
 

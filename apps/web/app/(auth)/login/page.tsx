@@ -34,26 +34,32 @@ export default function LoginPage() {
 
   return (
     <main id="main" className="grid min-h-screen bg-maroon lg:grid-cols-[1.1fr_1fr]">
-      {/* hero */}
-      <section className="relative hidden overflow-hidden bg-gradient-to-br from-maroon-deep via-maroon to-royal/80 p-12 text-maroon-foreground lg:flex lg:flex-col lg:justify-between">
-        <Motif className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] opacity-20" />
-        <Motif className="pointer-events-none absolute -bottom-32 -left-20 h-[360px] w-[360px] opacity-15" />
-        <Logo />
-        <div className="relative max-w-lg">
-          <img src="/images/hero-royal.jpg" alt="Emerald and gold heritage necklace with jhumka earrings on crimson velvet" className="mb-8 aspect-[16/9] w-full rounded-2xl border border-gold/60 object-cover shadow-lift" />
-          <p className="eyebrow !text-gold">AI Jewellery Growth Studio</p>
-          <h1 className="mt-3 font-editorial text-5xl font-semibold leading-[1.05] text-ivory">Transform Your Jewellery Business with AI</h1>
-          <GoldDivider className="my-6 max-w-xs" />
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {FEATURES.map(({ icon: I, label }) => (
-              <li key={label} className="flex items-center gap-3 text-sm">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gold/70 bg-gold/10 text-gold"><I className="h-4 w-4" aria-hidden /></span>
-                {label}
-              </li>
-            ))}
-          </ul>
+      {/* hero: full-bleed model photograph, text sits on a solid gradient so nothing is covered or misaligned */}
+      <section className="relative hidden min-h-screen overflow-hidden bg-maroon-deep text-maroon-foreground lg:block">
+        {/* photo occupies the upper ~62% so the necklace stays visible; text sits on solid maroon below it */}
+        <div className="absolute inset-x-0 top-0 h-[54%]">
+          <img src="/images/model-bridal.jpg" alt="Model wearing a gold bridal choker with ruby and emerald stones" className="h-full w-full object-cover object-[50%_70%]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-maroon-deep via-maroon-deep/40 to-transparent" aria-hidden />
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-maroon-deep/80 to-transparent" aria-hidden />
         </div>
-        <p className="relative text-xs text-maroon-foreground/60">Premium · Intelligent · Trusted — India · Dubai · Global</p>
+        <Motif className="pointer-events-none absolute -right-24 -top-24 h-[380px] w-[380px] opacity-20" />
+        <div className="relative z-10 flex min-h-screen flex-col justify-between px-12 py-10 xl:px-14">
+          <Logo />
+          <div className="max-w-lg">
+            <p className="eyebrow !text-gold">AI Jewellery Growth Studio</p>
+            <h1 className="mt-3 font-editorial text-5xl font-semibold leading-[1.05] text-ivory xl:text-[56px]">Transform Your Jewellery Business with AI</h1>
+            <GoldDivider className="my-6 max-w-xs" />
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {FEATURES.map(({ icon: I, label }) => (
+                <li key={label} className="flex items-center gap-3 text-sm">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/70 bg-maroon-deep/60 text-gold"><I className="h-4 w-4" aria-hidden /></span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-8 text-xs text-maroon-foreground/70">Premium · Intelligent · Trusted — India · Dubai · Global</p>
+          </div>
+        </div>
       </section>
 
       {/* form */}
