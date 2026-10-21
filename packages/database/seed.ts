@@ -34,7 +34,16 @@ async function wipe() {
   await prisma.tenant.deleteMany({ where: { slug: { in: ['suvarna-heritage', 'al-noor-dubai', 'techmunda-platform'] } } });
 }
 
+/** `--if-needed`: seed only when demo data is missing or its image files are gone (ephemeral disks on free hosts). */
+async function needsSeed(): Promise<boolean> {
+  const t = await prisma.tenant.findUnique({ where: { slug: 'suvarna-heritage' } });
+  if (!t) return true;
+  const m = await prisma.productMedia.findFirst({ where: { tenantId: t.id } });
+  return !m || !(await storage.exists(m.storageKey));
+}
+
 async function main() {
+  if (process.argv.includes('--if-needed') && !(await needsSeed())) { console.log('Demo data present — seed skipped.'); return; }
   await wipe();
   const hash = await bcrypt.hash(PASSWORD, 12);
 

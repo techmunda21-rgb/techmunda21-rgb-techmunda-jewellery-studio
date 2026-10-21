@@ -9,8 +9,8 @@ const schema = z.object({
   NODE_ENV: z.string().default('development'),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().default('redis://localhost:6379'),
-  API_PORT: z.coerce.number().default(4000),
-  API_PUBLIC_URL: z.string().default('http://localhost:4000'),
+  API_PORT: z.coerce.number().default(Number(process.env.PORT ?? 4000)),
+  API_PUBLIC_URL: z.string().default(process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:4000'),
   WEB_PUBLIC_URL: z.string().default('http://localhost:3000'),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
