@@ -41,3 +41,9 @@ https://www.techmunda.co.in/?utm_source=meta&utm_medium=paid_social&utm_campaign
 `out/techmunda-launch-reel.mp4` — 1080×1920, 18 s, 24 fps, silent. Re-render with `node build-video.mjs` (needs ffmpeg).
 Caption: "Techmunda is live 🎉 The AI jewellery growth studio for India & Dubai — studio-quality product visuals (you approve every image), lead capture, Kanban CRM and approve-then-send follow-ups. Book a free demo: link in bio. #jewellerybusiness #jewellerymarketing #goldjewellery #indianjewellery #dubaijewellery #techmunda"
 Add trending/licensed audio inside Instagram when you post (the file is silent on purpose to avoid copyright issues).
+
+## Instagram lead-gen images (`out/instagram/`, regenerate with `node build-instagram.mjs`)
+- 6-slide 4:5 carousel (1080×1350): hook → problem → visuals → lead capture → approvals → free demo CTA.
+- 2 single 1:1 posts: "Now live – free demo" and "3 things your shop should track".
+Caption idea: "Enquiries lost in WhatsApp chats? Techmunda captures, scores and tracks every jewellery enquiry — and nothing is sent without your OK. DM us DEMO or tap the link in bio for a free demo workspace. #jewellerybusiness #jewellerymarketing #jewelleryshop #goldjewellery"
+Lead handling: replies to "DEMO" DMs are a person-to-person conversation; add a consent note before collecting phone/e-mail, and keep the link in bio pointing to the signup/demo page.
