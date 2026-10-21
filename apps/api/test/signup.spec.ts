@@ -172,6 +172,21 @@ describe('OTP delivery adapter safety', () => {
     expect(new ProviderOtpDelivery(env({ SMTP_HOST: 'h', SMTP_USER: 'u', SMTP_PASS: 'p' })).channels()).toEqual(['EMAIL']);
     expect(new ProviderOtpDelivery(env({ TWILIO_ACCOUNT_SID: 's', TWILIO_AUTH_TOKEN: 't', TWILIO_FROM: '+1' })).channels()).toEqual(['SMS']);
   });
+  it('sends through the Brevo HTTPS API when BREVO_API_KEY is set (no SMTP needed)', async () => {
+    const calls: any[] = [];
+    const orig = global.fetch;
+    global.fetch = (async (url: string, init: any) => { calls.push({ url, init }); return new Response('{}', { status: 201 }); }) as any;
+    try {
+      const d = new ProviderOtpDelivery(env({ BREVO_API_KEY: 'xkeysib-test', SMTP_FROM: 'Techmunda <techmunda21@gmail.com>' }));
+      expect(d.channels()).toEqual(['EMAIL']);
+      await d.send('EMAIL', 'client@example.com', '123456');
+      expect(calls[0].url).toBe('https://api.brevo.com/v3/smtp/email');
+      const body = JSON.parse(calls[0].init.body);
+      expect(body.sender).toEqual({ name: 'Techmunda', email: 'techmunda21@gmail.com' });
+      expect(body.to).toEqual([{ email: 'client@example.com' }]);
+      expect(calls[0].init.headers['api-key']).toBe('xkeysib-test');
+    } finally { global.fetch = orig; }
+  });
   it('console OTP mode is refused in production and on hosted platforms', () => {
     expect(new ProviderOtpDelivery(env({ ALLOW_INSECURE_OTP_CONSOLE: true })).channels()).toEqual(['EMAIL', 'SMS']);
     expect(new ProviderOtpDelivery(env({ ALLOW_INSECURE_OTP_CONSOLE: true, NODE_ENV: 'production' })).channels()).toEqual([]);

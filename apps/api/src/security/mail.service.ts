@@ -16,9 +16,14 @@ export class MailService {
   constructor(@Inject(ENV) private readonly env: AppEnv | Env) {}
 
   isConfigured() {
-    return !!(this.env.SMTP_HOST && this.env.SMTP_USER && this.env.SMTP_PASS);
+    return this.viaApi() || !!(this.env.SMTP_HOST && this.env.SMTP_USER && this.env.SMTP_PASS);
+  }
+  /** HTTPS API mode (works where outbound SMTP ports are blocked). */
+  viaApi() {
+    return !!this.env.BREVO_API_KEY;
   }
   missing() {
+    if (this.viaApi()) return [];
     return (['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'] as const).filter((k) => !this.env[k]);
   }
   from() {
@@ -38,12 +43,34 @@ export class MailService {
     return new MailError(`The SMTP server rejected the message (${err.code ?? 'error'}): ${msg.slice(0, 160)}`, 'REJECTED');
   }
 
+  private async sendViaApi(m: { to: string; subject: string; text: string; html?: string }) {
+    const from = this.from();
+    const match = /^\s*(?:"?([^"<]*?)"?\s*)?<([^>]+)>\s*$/.exec(from);
+    const sender = match ? { name: match[1]?.trim() || undefined, email: match[2].trim() } : { email: from.trim() };
+    let res: Response;
+    try {
+      res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'api-key': this.env.BREVO_API_KEY!, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ sender, to: [{ email: m.to }], subject: m.subject, textContent: m.text, htmlContent: m.html }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      throw new MailError('Could not reach the e-mail API (api.brevo.com).', 'CONNECTION');
+    }
+    if (res.ok) return;
+    if (res.status === 401 || res.status === 403) throw new MailError('The e-mail API key was rejected (check BREVO_API_KEY and that the sender is verified in Brevo).', 'AUTH');
+    const detail = scrubSecrets(((await res.text().catch(() => '')) || '').slice(0, 160));
+    throw new MailError(`The e-mail API rejected the message (${res.status}): ${detail}`, 'REJECTED');
+  }
+
   async send(m: { to: string; subject: string; text: string; html?: string }) {
     if (!this.isConfigured()) throw new MailError(`E-mail is not configured (missing ${this.missing().join(', ')})`, 'NOT_CONFIGURED');
     try {
+      if (this.viaApi()) return await this.sendViaApi(m);
       await this.transport().sendMail({ from: this.from(), to: m.to, subject: m.subject, text: m.text, html: m.html });
     } catch (e) {
-      const ex = this.explain(e);
+      const ex = e instanceof MailError ? e : this.explain(e);
       this.log.error(`send failed: ${ex.code}`);
       throw ex;
     }
@@ -51,6 +78,14 @@ export class MailService {
 
   async verify(): Promise<{ ok: boolean; error?: string }> {
     if (!this.isConfigured()) return { ok: false, error: `Missing ${this.missing().join(', ')}` };
+    if (this.viaApi()) {
+      try {
+        const r = await fetch('https://api.brevo.com/v3/account', { headers: { 'api-key': this.env.BREVO_API_KEY!, accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
+        return r.ok ? { ok: true } : { ok: false, error: 'The e-mail API key was rejected (check BREVO_API_KEY).' };
+      } catch {
+        return { ok: false, error: 'Could not reach the e-mail API (api.brevo.com).' };
+      }
+    }
     try {
       await this.transport().verify();
       return { ok: true };

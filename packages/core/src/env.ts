@@ -52,6 +52,8 @@ const schema = z.object({
   DEMO_RETENTION_DAYS: z.coerce.number().default(30),
   /** Where security alerts (brute force, token reuse, forged tokens…) are e-mailed. Needs SMTP configured. */
   ALERT_EMAIL: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+  /** HTTPS e-mail API (Brevo). Preferred on hosts that block SMTP ports (Render free tier). Sender must be verified in Brevo. */
+  BREVO_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(465),
   SMTP_USER: z.string().optional(),

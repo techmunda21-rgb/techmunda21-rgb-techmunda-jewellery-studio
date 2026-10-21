@@ -69,6 +69,7 @@ export class FakeMail {
   failWith: MailError | null = null;
   sent: Array<{ to: string; subject: string; text: string }> = [];
   isConfigured() { return this.configured; }
+  viaApi() { return false; }
   missing() { return this.configured ? [] : ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS']; }
   from() { return 'Techmunda <noreply@test>'; }
   async send(m: { to: string; subject: string; text: string }) {

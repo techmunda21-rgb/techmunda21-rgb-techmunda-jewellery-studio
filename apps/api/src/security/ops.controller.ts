@@ -32,7 +32,7 @@ export class OpsController {
   @Get('readiness')
   @Doc('E-mail / SMS / OTP / alerting readiness (no secrets returned). ?verify=true also tests the SMTP login.')
   async readiness(@Query('verify') verify?: string) {
-    const smtp = { configured: this.mail.isConfigured(), missing: this.mail.missing(), host: this.env.SMTP_HOST ?? null, port: this.env.SMTP_PORT, user: maskEmail(this.env.SMTP_USER), from: this.mail.from() || null, login: verify === 'true' ? await this.mail.verify() : null };
+    const smtp = { mode: this.mail.viaApi() ? 'brevo-api' : 'smtp', configured: this.mail.isConfigured(), missing: this.mail.missing(), host: this.env.SMTP_HOST ?? null, port: this.env.SMTP_PORT, user: maskEmail(this.env.SMTP_USER), from: this.mail.from() || null, login: verify === 'true' ? await this.mail.verify() : null };
     const smsMissing = (['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'] as const).filter((k) => !this.env[k]).concat(this.env.TWILIO_FROM || this.env.TWILIO_MESSAGING_SERVICE_SID ? [] : (['TWILIO_FROM or TWILIO_MESSAGING_SERVICE_SID'] as never[]));
     const channels = this.otp.channels();
     return {

@@ -35,6 +35,8 @@ services:
       # Signup OTP delivery — set at least one pair, otherwise /signup says "unavailable" (it never fakes a code)
       # Pre-filled for the Gmail account techmunda21@gmail.com. ONLY the app password is a secret you must paste in Render
       # (Google account → Security → 2-Step Verification ON → App passwords → create "Techmunda" → 16 characters).
+      # Render's free tier blocks outbound SMTP ports (25/465/587), so Gmail SMTP cannot work there. Use the HTTPS API below (free Brevo account).
+      - { key: BREVO_API_KEY, sync: false }    # <- Brevo → SMTP & API → API keys (starts xkeysib-)
       - { key: SMTP_HOST, value: smtp.gmail.com }
       - { key: SMTP_PORT, value: "465" }
       - { key: SMTP_USER, value: techmunda21@gmail.com }
