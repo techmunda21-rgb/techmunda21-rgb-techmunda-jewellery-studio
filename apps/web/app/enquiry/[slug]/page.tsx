@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/form';
 import { Banner } from '@/components/ui/misc';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GoldDivider, LogoMark, Motif } from '@/components/brand/brand';
+import { GoldDivider, Motif } from '@/components/brand/brand';
 import { api, errorMessage } from '@/lib/api';
 
 type Values = z.input<typeof publicLeadSchema>;
@@ -54,7 +54,7 @@ export default function EnquiryPage({ params }: { params: Promise<{ slug: string
         </div>
         <Motif className="pointer-events-none absolute -right-28 -top-28 h-[360px] w-[360px] opacity-20" />
         <div className="relative z-10 flex min-h-[420px] flex-col justify-between px-6 py-8 sm:px-10 lg:min-h-screen lg:px-14 lg:py-10">
-          <div className="flex items-center gap-2"><LogoMark className="h-8 w-8" /><span className="font-editorial text-xl tracking-wide">{tenant.isLoading ? '' : name}</span></div>
+          <div className="flex items-center gap-2"><span className="font-editorial text-2xl tracking-wide">{tenant.isLoading ? '' : name}</span></div>
           <div className="max-w-lg pt-52 lg:pt-0">
             <h1 className="font-editorial text-[42px] font-semibold leading-[1.05] text-ivory sm:text-6xl">Find Your Perfect Jewellery</h1>
             <p className="mt-4 text-lg text-maroon-foreground/90">Book a personalized consultation with our jewellery experts.</p>
@@ -99,7 +99,7 @@ export default function EnquiryPage({ params }: { params: Promise<{ slug: string
                 </div>
                 <Button type="submit" size="lg" className="w-full sm:col-span-2" loading={isSubmitting} disabled={tenant.isLoading}>Submit Enquiry →</Button>
               </form>
-              <p className="mt-4 text-center text-[11px] text-ink-muted">Your details are used only to respond to this enquiry. <a className="underline" href="/legal/privacy#customer-enquiries" target="_blank" rel="noopener">Privacy notice</a></p>
+              <p className="mt-4 text-center text-[11px] text-ink-muted">Powered by Techmunda · Your details are used only to respond to this enquiry. <a className="underline" href="/legal/privacy#customer-enquiries" target="_blank" rel="noopener">Privacy notice</a></p>
             </div>
           )}
         </div>

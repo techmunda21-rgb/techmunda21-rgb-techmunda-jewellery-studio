@@ -72,7 +72,7 @@ export default function SignupPage() {
         <div className="mb-6 flex justify-center"><Logo tone="dark" /></div>
         <div className="panel p-6 sm:p-9">
           <div className="mb-5 text-center">
-            <LogoMark className="mx-auto mb-2 h-10 w-10" />
+            <LogoMark variant="plain" className="mx-auto mb-1 h-24 w-24" />
             <h1 className="font-display text-2xl font-semibold">{pending ? 'Verify your details' : 'Create your demo workspace'}</h1>
             <p className="mt-1 text-sm text-ink-muted">{pending ? `Enter the 6-digit code we sent to ${pending.sentTo}.` : 'Free demo · verified by one-time code · data auto-deleted after 30 days.'}</p>
           </div>

@@ -35,6 +35,7 @@ async function main() {
   const cssFonts = '';  // system serif/sans fallbacks keep the script dependency-free; Playwright's Chromium ships suitable fonts
   const date = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   const hero = items.find((i) => i.img)?.img;
+  const logo = `data:image/png;base64,${fs.readFileSync(path.resolve(__dirname, '../../apps/web/public/images/logo-emblem.png')).toString('base64')}`;
 
   const page = (i: (typeof items)[number], n: number) => {
     const alloy = i.w != null && i.pure != null ? Math.round((i.w - i.pure) * 1000) / 1000 : null;
@@ -79,6 +80,7 @@ async function main() {
   .eyebrow{font-size:9pt;letter-spacing:.32em;text-transform:uppercase;color:var(--gold)}
   .cover h1{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:48pt;line-height:1.02;margin:6mm 0 4mm;color:#FFF9EF}
   .cover p{font-size:11pt;color:#E8D9BD;max-width:120mm;line-height:1.6}
+  .badge{width:22mm;height:22mm;border-radius:50%;background:#FFF9EF;padding:1mm;border:1px solid var(--gold);margin-bottom:6mm;align-self:flex-start}
   .rule{height:1px;background:linear-gradient(to right,var(--gold),transparent);margin:7mm 0;width:60mm}
   .index{padding:18mm;background:var(--ivory)} .index h2{font-family:Georgia,serif;font-size:24pt;color:var(--maroon);margin:3mm 0 8mm}
   table.idx{width:100%;border-collapse:collapse;font-size:9.5pt} .idx th{text-align:left;font-size:7.5pt;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-deep);border-bottom:1.5px solid var(--gold);padding:2.5mm 2mm}
@@ -100,7 +102,7 @@ async function main() {
   .notes{padding:18mm;background:var(--ivory);font-size:9.5pt;line-height:1.7} .notes h2{font-family:Georgia,serif;font-size:22pt;color:var(--maroon);margin-bottom:6mm} .notes li{margin:0 0 3mm 5mm}
   </style></head><body>
   <section class="pg cover"><div class="photo" style="${hero ? `background-image:url(${hero})` : ''}"></div>
-    <div class="txt"><p class="eyebrow">Price Catalogue · ${esc(date)}</p><h1>${esc(tenant.name)}</h1><div class="rule"></div><p>${products.length} designs with hallmark purity, gross weight, pure-metal content and prices.</p></div></section>
+    <div class="txt"><img class="badge" src="${logo}" alt=""><p class="eyebrow">Price Catalogue · ${esc(date)}</p><h1>${esc(tenant.name)}</h1><div class="rule"></div><p>${products.length} designs with hallmark purity, gross weight, pure-metal content and prices.</p></div></section>
   <section class="pg index"><p class="eyebrow">Contents</p><h2>At a glance</h2>
     <table class="idx"><thead><tr><th>Design</th><th>SKU</th><th>Purity</th><th class="n">Gross g</th><th class="n">Pure g</th><th class="n">Price</th></tr></thead><tbody>
     ${items.map((i) => `<tr><td>${esc(i.p.name)}</td><td>${esc(i.p.sku)}</td><td>${i.info ? `${esc(i.info.label)} · ${i.info.fineness}` : esc(i.p.purity ?? '—')}</td><td class="n">${i.w ?? '—'}</td><td class="n">${i.pure ?? '—'}</td><td class="n">${inr(i.price, i.p.currency)}</td></tr>`).join('')}

@@ -68,7 +68,7 @@ export default function LoginPage() {
           <div className="mb-6 flex justify-center lg:hidden"><Logo tone="dark" /></div>
           <div className="panel p-7 sm:p-9">
             <div className="mb-6 text-center">
-              <LogoMark className="mx-auto mb-2 h-10 w-10" />
+              <LogoMark variant="plain" className="mx-auto mb-1 h-24 w-24" />
               <h1 className="font-display text-2xl font-semibold">Welcome Back</h1>
               <p className="mt-1 text-sm text-ink-muted">Sign in to your Techmunda account</p>
             </div>

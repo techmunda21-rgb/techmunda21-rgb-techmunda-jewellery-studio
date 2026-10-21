@@ -1,15 +1,13 @@
 import { cn } from '@/lib/utils';
 
-/** Lotus-in-diamond mark. Original artwork — not derived from any jeweller's logo. */
-export function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={cn('h-9 w-9 text-gold', className)} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" aria-hidden>
-      <path d="M24 3 45 24 24 45 3 24Z" />
-      <path d="M24 10 38 24 24 38 10 24Z" opacity=".55" />
-      <path d="M24 14c-5 3-6.5 8-3.5 13 1 1.5 2.2 2.6 3.5 3.5 1.3-.9 2.5-2 3.5-3.5 3-5 1.5-10-3.5-13Z" fill="currentColor" fillOpacity=".18" />
-      <path d="M24 30c-4 0-7-2-9-5 3-.5 6 .3 9 3 3-2.7 6-3.5 9-3-2 3-5 5-9 5Z" />
-      <circle cx="24" cy="24" r="1.6" fill="currentColor" />
-    </svg>
+/** Official Techmunda emblem. `badge` (default) sits on an ivory disc so it reads on dark maroon surfaces; `plain` is for light surfaces. */
+export function LogoMark({ className, variant = 'badge' }: { className?: string; variant?: 'badge' | 'plain' }) {
+  return variant === 'plain' ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/images/logo-emblem.png" alt="Techmunda" width={512} height={512} className={cn('h-9 w-9 object-contain', className)} />
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/images/logo-emblem.png" alt="Techmunda" width={512} height={512} className={cn('h-10 w-10 rounded-full bg-ivory object-contain p-[3px] ring-1 ring-gold/70', className)} />
   );
 }
 
