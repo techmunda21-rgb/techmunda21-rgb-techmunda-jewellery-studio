@@ -36,3 +36,8 @@ https://www.techmunda.co.in/?utm_source=meta&utm_medium=paid_social&utm_campaign
 - No income, price or guaranteed-results claims. Keep "you approve every image" – it is how the product works.
 - Landing page must carry the Privacy Policy and Terms (already in the app).
 - Review in Meta Ads Manager preview before launch. Nothing has been published or paid for.
+
+## Instagram launch Reel
+`out/techmunda-launch-reel.mp4` — 1080×1920, 18 s, 24 fps, silent. Re-render with `node build-video.mjs` (needs ffmpeg).
+Caption: "Techmunda is live 🎉 The AI jewellery growth studio for India & Dubai — studio-quality product visuals (you approve every image), lead capture, Kanban CRM and approve-then-send follow-ups. Book a free demo: link in bio. #jewellerybusiness #jewellerymarketing #goldjewellery #indianjewellery #dubaijewellery #techmunda"
+Add trending/licensed audio inside Instagram when you post (the file is silent on purpose to avoid copyright issues).
