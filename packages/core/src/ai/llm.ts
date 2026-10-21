@@ -21,7 +21,8 @@ export function mapOpenAiError(err: unknown): ProviderError {
   const e = err as { status?: number; message?: string };
   const msg = scrubSecrets(e?.message ?? 'Unknown provider error');
   if (e?.status === 429) return new ProviderError(`AI provider rate limited: ${msg}`, 'RATE_LIMITED', true);
-  if (e?.status === 401 || e?.status === 403) return new ProviderError('AI provider rejected the API credentials', 'NOT_CONFIGURED', false);
+  if (e?.status === 401) return new ProviderError('AI provider rejected the API key (401). Check OPENAI_API_KEY: it must be a complete, active key with no spaces or quotes, from the OpenAI account that has billing enabled.', 'NOT_CONFIGURED', false);
+  if (e?.status === 403) return new ProviderError(`AI provider denied access (403): ${msg.slice(0, 200)}. For gpt-image-1 this usually means the OpenAI organization is not verified yet (platform.openai.com → Settings → Organization → Verify), or the project lacks access to the model.`, 'NOT_CONFIGURED', false);
   if (e?.status && e.status >= 500) return new ProviderError(`AI provider unavailable: ${msg}`, 'PROVIDER_ERROR', true);
   return new ProviderError(`AI provider error: ${msg}`, 'PROVIDER_ERROR', false);
 }
