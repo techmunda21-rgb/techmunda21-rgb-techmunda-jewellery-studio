@@ -47,3 +47,6 @@ Add trending/licensed audio inside Instagram when you post (the file is silent o
 - 2 single 1:1 posts: "Now live – free demo" and "3 things your shop should track".
 Caption idea: "Enquiries lost in WhatsApp chats? Techmunda captures, scores and tracks every jewellery enquiry — and nothing is sent without your OK. DM us DEMO or tap the link in bio for a free demo workspace. #jewellerybusiness #jewellerymarketing #jewelleryshop #goldjewellery"
 Lead handling: replies to "DEMO" DMs are a person-to-person conversation; add a consent note before collecting phone/e-mail, and keep the link in bio pointing to the signup/demo page.
+
+## Storyboard carousel "A day with Techmunda" (`out/storyboard/`, `node build-storyboard.mjs`)
+7 scenes (4:5): busy showroom → enquiry page → AI scoring → Kanban board → approved visuals → approved follow-up → free demo. The "story" is illustrative, not a real client; the frames say so.
